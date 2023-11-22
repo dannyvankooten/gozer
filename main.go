@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	_ "embed"
 	"encoding/xml"
 	"errors"
 	"fmt"
@@ -276,6 +277,9 @@ func (s *Site) readContent() error {
 	return err
 }
 
+//go:embed sitemap.xsl
+var sitemapXSL []byte
+
 func (s *Site) createSitemap() error {
 	type Url struct {
 		XMLName xml.Name `xml:"url"`
@@ -323,7 +327,11 @@ func (s *Site) createSitemap() error {
 	}
 
 	// copy xml stylesheet
-	return copyFile("sitemap.xsl", "build/sitemap.xsl")
+	if err := os.WriteFile("build/sitemap.xsl", sitemapXSL, 0655); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (s *Site) createRSSFeed() error {
