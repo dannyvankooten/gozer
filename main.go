@@ -31,6 +31,9 @@ var md = goldmark.New(
 
 var templates = template.Must(template.ParseFS(os.DirFS("templates/"), "*.html"))
 
+//go:embed sitemap.xsl
+var sitemapXSL []byte
+
 type Config struct {
 	SiteUrl string `xml:"site_url"`
 }
@@ -277,9 +280,6 @@ func (s *Site) readContent() error {
 	return err
 }
 
-//go:embed sitemap.xsl
-var sitemapXSL []byte
-
 func (s *Site) createSitemap() error {
 	type Url struct {
 		XMLName xml.Name `xml:"url"`
@@ -469,7 +469,3 @@ func main() {
 		log.Fatal("Hello", http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build/"))))
 	}
 }
-
-// TODO:
-// - Go through all files and build a list of pages
-// - Then start writing output files, passing the list of posts to each page
