@@ -72,7 +72,7 @@ func (p *Page) Dest() string {
 
 	d = strings.TrimSuffix(d, ".md")
 	d = strings.TrimSuffix(d, ".html")
-	d = strings.TrimSuffix(d, "_index")
+	d = strings.TrimSuffix(d, "index")
 
 	d += "/index.html"
 	return d

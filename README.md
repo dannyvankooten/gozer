@@ -15,14 +15,41 @@ Gozer expects a certain directory structure in order to build your site correctl
 
 ```txt
 content/        # Your posts and pages
+--- index.md    # Will be generated at build/index.html
+--- about.md    # Will be generated at build/about/index.html
 templates/      # Your Go templates
 public/         # Any static files
 config.xml      # Configuration file
 ```
 
-When running `gozer` in the root directory, your HTML site is built in the `build/` directory.
+## Commands
 
-You can run `gozer serve` to build your site and start an HTTP server serving the `build/` directory locally.
+- `gozer` Builds the site into `build/`
+- `gozer serve` Builds the site into `build/` and starts an HTTP server on `localhost:8080` serving the `build/` directory.
+
+## Content files
+
+Each file in your `content/` directory should end in `.md` and have front matter specifying the page title:
+
+```md
++++
+title = "My page title"
++++
+
+Page content here.
+```
+
+The default template for every page is `default.html`. You can override it by setting the `template` variable in your front matter.
+
+```md
++++
+title = "My page title"
+template = "special-page.html"
++++
+
+Page content here.
+```
+
 
 ## License
 
