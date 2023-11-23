@@ -58,6 +58,7 @@ title = "My page title"
 Page content here.
 ```
 
+### Templates
 The default template for every page is `default.html`. You can override it by setting the `template` variable in your front matter.
 
 ```md
@@ -69,6 +70,26 @@ template = "special-page.html"
 Page content here.
 ```
 
+Templates are powered by Go's standard `html/template` package, so you can use all the [actions described here](https://pkg.go.dev/text/template#hdr-Actions).
+
+Every template receives the following set of variables:
+
+```
+Pages       # Slice of all pages in the site
+Posts       # Slice of all posts in the site (any page with a date in the filename)
+SiteUrl     # The root URL of the site
+Page        # The current page
+Title       # The current page title. Can also be access via Page.Title
+Content     # The current page's HTML content.
+```
+
+For example, to show a list of the 5 most recent posts:
+
+```gotemplate
+{{ range (slice .Posts 0 5) }}
+    <a href="{{ .Permalink }}">{{ .Title }}</a> <small>{{ .DatePublished.Format "Jan 02, 2006" }}</small><br />
+{{ end }}
+```
 
 ## License
 
