@@ -37,7 +37,7 @@ Usage: gozer [OPTIONS] <COMMAND>
 Commands:
     build   Deletes the output directory if there is one and builds the site
     serve   Builds the site and starts an HTTP server on http://localhost:8080
-    new             Creates a new site structure in the given directory
+    new     Creates a new site structure in the given directory
 
 Options:
     -r, --root <ROOT> Directory to use as root of project (default: .)
