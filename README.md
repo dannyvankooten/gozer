@@ -48,7 +48,7 @@ Commands:
 
 Options:
     -r, --root <ROOT> Directory to use as root of project (default: .)
-    -c, --config <CONFIG> Path to confiruation file (default: config.xml)
+    -c, --config <CONFIG> Path to configuration file (default: config.xml)
 ```
 
 ## Content files
