@@ -8,10 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer/html"
 	"html/template"
-	"io"
 	"io/fs"
 	"net/http"
 	"os"
@@ -22,12 +20,12 @@ import (
 )
 
 var md = goldmark.New(
-	goldmark.WithExtensions(extension.GFM),
-	goldmark.WithParserOptions(),
 	goldmark.WithRendererOptions(
 		html.WithUnsafe(),
 	),
 )
+
+var frontMatter = []byte("+++")
 
 var templates *template.Template
 
@@ -39,48 +37,48 @@ type Config struct {
 }
 
 type Page struct {
-	Title      string
-	Template   string
-	Date       time.Time
-	Path       string
-	PrettyName string
-	IsBlogPost bool
-	LastMod    time.Time
+	Title         string
+	Template      string
+	DatePublished time.Time
+	DateModified  time.Time
+	Permalink     string
+	UrlPath       string
+	Filepath      string
 }
 
-func (p *Page) URLPath() string {
-	path := strings.TrimSuffix(strings.TrimSuffix(p.Dest(), "/index.html"), "/")
-	if len(path) > 0 {
-		if path[0] == '/' {
-			path = path[1:]
-		}
-
-		if path[len(path)-1] != '/' {
-			path += "/"
-		}
+func NewPageFromFile(file string, baseUrl string) (*Page, error) {
+	info, err := os.Stat(file)
+	if err != nil {
+		return nil, err
 	}
-	return path
+
+	p := Page{
+		Filepath:      file,
+		UrlPath:       filepathToUrlpath(file),
+		DatePublished: parseDateFromFilename(file),
+		DateModified:  info.ModTime(),
+		Template:      "default.html",
+	}
+	p.Permalink = baseUrl + p.UrlPath
+
+	if err := parseFrontMatter(&p); err != nil {
+		return nil, err
+	}
+
+	return &p, nil
 }
 
-func (p *Page) Dest() string {
-	d := strings.TrimPrefix(p.Path, "content")
-
-	if p.PrettyName != "" {
-		d = strings.TrimSuffix(d, filepath.Base(d))
-		d += p.PrettyName
-	}
-
-	d = strings.TrimSuffix(d, ".md")
-	d = strings.TrimSuffix(d, ".html")
-	d = strings.TrimSuffix(d, "index")
-
-	d += "/index.html"
-	return d
+func filepathToUrlpath(filepath string) string {
+	filepath = strings.TrimPrefix(filepath, "content/")
+	filepath = strings.TrimSuffix(filepath, ".md")
+	filepath = strings.TrimSuffix(filepath, "index")
+	filepath += "/"
+	return filepath
 }
 
 func parseFrontMatter(p *Page) error {
 	// open file to read front matter
-	fh, err := os.Open(p.Path)
+	fh, err := os.Open(p.Filepath)
 	if err != nil {
 		return err
 	}
@@ -90,7 +88,7 @@ func parseFrontMatter(p *Page) error {
 
 	for scanner.Scan() {
 		line := scanner.Text()
-		if line == "+++" {
+		if line == string(frontMatter) {
 			break
 		}
 
@@ -113,7 +111,7 @@ func parseFrontMatter(p *Page) error {
 		case "date":
 			// discard, we get this from filename only now
 		default:
-			log.Warn("Unknown front-matter key in %s: %#v\n", p.Path, name)
+			log.Warn("Unknown front-matter key in %s: %#v\n", p.Filepath, name)
 		}
 
 	}
@@ -122,7 +120,7 @@ func parseFrontMatter(p *Page) error {
 }
 
 func (p *Page) ParseContent() (string, error) {
-	fileContent, err := os.ReadFile(p.Path)
+	fileContent, err := os.ReadFile(p.Filepath)
 	if err != nil {
 		return "", err
 	}
@@ -132,7 +130,7 @@ func (p *Page) ParseContent() (string, error) {
 	}
 
 	// Skip front matter
-	pos := bytes.Index(fileContent[3:], []byte("+++"))
+	pos := bytes.Index(fileContent[3:], frontMatter)
 	if pos > -1 {
 		fileContent = fileContent[pos+6:]
 	}
@@ -152,11 +150,12 @@ func (s *Site) buildPage(p *Page) error {
 		return err
 	}
 
-	if err := os.MkdirAll("build/"+filepath.Dir(p.Dest()), 0755); err != nil {
+	dest := p.UrlPath + "index.html"
+	if err := os.MkdirAll("build/"+filepath.Dir(dest), 0755); err != nil {
 		return err
 	}
 
-	fh, err := os.Create("build/" + p.Dest())
+	fh, err := os.Create("build/" + dest)
 	if err != nil {
 		return err
 	}
@@ -177,52 +176,16 @@ func (s *Site) buildPage(p *Page) error {
 	})
 }
 
-func copyFile(src string, dest string) error {
-	info, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
-	// if it's a dir, just re-create it in build/
-	if info.IsDir() {
-		err := os.Mkdir(dest, info.Mode())
-		if err != nil && !errors.Is(err, os.ErrExist) {
-			return err
+func parseDateFromFilename(filename string) time.Time {
+	filename = filepath.Base(filename)
+	if len(filename) > 11 && filename[4] == '-' && filename[7] == '-' && filename[10] == '-' {
+		date, err := time.Parse("2006-01-02", filename[0:10])
+		if err == nil {
+			return date
 		}
-
-		return nil
 	}
 
-	// open input
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-
-	// create output
-	fh, err := os.Create(dest)
-	if err != nil {
-		return err
-	}
-	defer fh.Close()
-
-	// match file permissions
-	err = fh.Chmod(info.Mode())
-	if err != nil {
-		return err
-	}
-
-	// copy content
-	_, err = io.Copy(fh, in)
-	return err
-}
-
-func copyDirRecursively(src string, dst string) error {
-	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
-		outpath := dst + strings.TrimPrefix(path, src)
-		return copyFile(path, outpath)
-	})
+	return time.Time{}
 }
 
 type Site struct {
@@ -231,50 +194,32 @@ type Site struct {
 	config *Config
 }
 
-func (s *Site) readContent() error {
+func (s *Site) AddPageFromFile(file string) error {
+	p, err := NewPageFromFile(file, s.config.SiteUrl)
+	if err != nil {
+		return err
+	}
 
-	err := filepath.WalkDir("content", func(path string, d fs.DirEntry, err error) error {
+	s.pages = append(s.pages, *p)
+	if !p.DatePublished.IsZero() {
+		s.posts = append(s.posts, *p)
+	}
+
+	return nil
+}
+
+func (s *Site) readContent() error {
+	// walk over files in "content" directory
+	err := filepath.WalkDir("content", func(file string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			return nil
 		}
-
-		info, err := d.Info()
-		if err != nil {
-			return nil
-		}
-
-		p := Page{
-			Path:       path,
-			IsBlogPost: strings.HasPrefix(path, "content/blog/") && !strings.HasSuffix(path, "index.md"),
-			LastMod:    info.ModTime(),
-			Template:   "default.html",
-		}
-
-		// parse date from filename
-		filename := filepath.Base(p.Path)
-		if len(filename) > 11 && filename[4] == '-' && filename[7] == '-' {
-			date, err := time.Parse("2006-01-02", filename[0:len("2000-01-02")])
-			if err == nil {
-				p.Date = date
-				p.PrettyName = filename[11:]
-			}
-		}
-
-		if err := parseFrontMatter(&p); err != nil {
-			return err
-		}
-
-		s.pages = append(s.pages, p)
-
-		if p.IsBlogPost {
-			s.posts = append(s.posts, p)
-		}
-		return nil
+		return s.AddPageFromFile(file)
 	})
 
 	// sort posts by date
 	sort.Slice(s.posts, func(i int, j int) bool {
-		return s.posts[i].Date.After(s.posts[j].Date)
+		return s.posts[i].DatePublished.After(s.posts[j].DatePublished)
 	})
 
 	return err
@@ -299,8 +244,8 @@ func (s *Site) createSitemap() error {
 	urls := make([]Url, 0, len(s.pages))
 	for _, p := range s.pages {
 		urls = append(urls, Url{
-			Loc:     s.config.SiteUrl + p.URLPath(),
-			LastMod: p.LastMod.Format(time.RFC1123Z),
+			Loc:     s.config.SiteUrl + p.UrlPath,
+			LastMod: p.DateModified.Format(time.RFC1123Z),
 		})
 	}
 
@@ -371,10 +316,10 @@ func (s *Site) createRSSFeed() error {
 
 		items = append(items, Item{
 			Title:       p.Title,
-			Link:        s.config.SiteUrl + p.URLPath(),
+			Link:        s.config.SiteUrl + p.UrlPath,
 			Description: pageContent,
-			PubDate:     p.Date.Format(time.RFC1123Z),
-			GUID:        s.config.SiteUrl + p.URLPath(),
+			PubDate:     p.DatePublished.Format(time.RFC1123Z),
+			GUID:        s.config.SiteUrl + p.UrlPath,
 		})
 	}
 
@@ -448,7 +393,7 @@ func main() {
 	// build each individual page
 	for _, p := range site.pages {
 		if err := site.buildPage(&p); err != nil {
-			log.Warn("Error processing %s: %s\n", p.Path, err)
+			log.Warn("Error processing %s: %s\n", p.Filepath, err)
 		}
 	}
 
