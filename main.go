@@ -52,13 +52,16 @@ func NewPageFromFile(file string, baseUrl string) (*Page, error) {
 		return nil, err
 	}
 
+	urlPath, datePublished := parseFilename(file)
+
 	p := Page{
 		Filepath:      file,
-		UrlPath:       filepathToUrlpath(file),
-		DatePublished: parseDateFromFilename(file),
+		UrlPath:       urlPath,
+		DatePublished: datePublished,
 		DateModified:  info.ModTime(),
 		Template:      "default.html",
 	}
+
 	p.Permalink = baseUrl + p.UrlPath
 
 	if err := parseFrontMatter(&p); err != nil {
@@ -68,12 +71,22 @@ func NewPageFromFile(file string, baseUrl string) (*Page, error) {
 	return &p, nil
 }
 
-func filepathToUrlpath(filepath string) string {
-	filepath = strings.TrimPrefix(filepath, "content/")
-	filepath = strings.TrimSuffix(filepath, ".md")
-	filepath = strings.TrimSuffix(filepath, "index")
-	filepath += "/"
-	return filepath
+// parseFilename parses the URL path and optional date component from the given file path
+func parseFilename(path string) (string, time.Time) {
+	path = strings.TrimPrefix(path, "content/")
+	path = strings.TrimSuffix(path, ".md")
+	path = strings.TrimSuffix(path, "index")
+
+	filename := filepath.Base(path)
+	if len(filename) > 11 && filename[4] == '-' && filename[7] == '-' && filename[10] == '-' {
+		date, err := time.Parse("2006-01-02", filename[0:10])
+		if err == nil {
+			return path[0:len(path)-len(filename)] + filename[11:] + "/", date
+		}
+	}
+
+	path += "/"
+	return path, time.Time{}
 }
 
 func parseFrontMatter(p *Page) error {
@@ -84,10 +97,18 @@ func parseFrontMatter(p *Page) error {
 	}
 	defer fh.Close()
 	scanner := bufio.NewScanner(fh)
+
+	// opening front matter
+	// TODO: Make front matter optional?
 	scanner.Scan()
+	if !bytes.Equal(scanner.Bytes(), frontMatter) {
+		return errors.New("missing front matter")
+	}
 
 	for scanner.Scan() {
 		line := scanner.Text()
+
+		// quit if at end of front matter
 		if line == string(frontMatter) {
 			break
 		}
@@ -174,18 +195,6 @@ func (s *Site) buildPage(p *Page) error {
 		"Title":   p.Title,
 		"Content": template.HTML(content),
 	})
-}
-
-func parseDateFromFilename(filename string) time.Time {
-	filename = filepath.Base(filename)
-	if len(filename) > 11 && filename[4] == '-' && filename[7] == '-' && filename[10] == '-' {
-		date, err := time.Parse("2006-01-02", filename[0:10])
-		if err == nil {
-			return date
-		}
-	}
-
-	return time.Time{}
 }
 
 type Site struct {

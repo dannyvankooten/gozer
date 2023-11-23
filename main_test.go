@@ -36,38 +36,27 @@ func TestParseContent(t *testing.T) {
 	}
 }
 
-func TestParseDateFromFilename(t *testing.T) {
-	tests := []struct {
-		input string
-		want  time.Time
-	}{
-		{"content/index.md", time.Time{}},
-		{"content/2023-11-23-hello-world.md", time.Date(2023, 11, 23, 0, 0, 0, 0, time.UTC)},
-		{"content/blog/2023-11-23-hello-world.md", time.Date(2023, 11, 23, 0, 0, 0, 0, time.UTC)},
-	}
-
-	for _, tc := range tests {
-		got := parseDateFromFilename(tc.input)
-		if got != tc.want {
-			t.Errorf("expected %v, got %v", tc.want, got)
-		}
-	}
-}
-
 func TestFilepathToUrlpath(t *testing.T) {
 	tests := []struct {
-		input string
-		want  string
+		input                 string
+		expectedUrlPath       string
+		expectedDatePublished time.Time
 	}{
-		{"content/index.md", "/"},
-		{"content/about.md", "about/"},
-		{"content/projects/gozer.md", "projects/gozer/"},
+		{input: "content/index.md", expectedUrlPath: "/", expectedDatePublished: time.Time{}},
+		{input: "content/about.md", expectedUrlPath: "about/", expectedDatePublished: time.Time{}},
+		{input: "content/projects/gozer.md", expectedUrlPath: "projects/gozer/", expectedDatePublished: time.Time{}},
+		{input: "content/2023-11-23-hello-world.md", expectedUrlPath: "hello-world/", expectedDatePublished: time.Date(2023, 11, 23, 0, 0, 0, 0, time.UTC)},
+		{input: "content/blog/2023-11-23-here-we-are.md", expectedUrlPath: "blog/here-we-are/", expectedDatePublished: time.Date(2023, 11, 23, 0, 0, 0, 0, time.UTC)},
 	}
 
 	for _, tc := range tests {
-		got := filepathToUrlpath(tc.input)
-		if got != tc.want {
-			t.Errorf("expected %v, got %v", tc.want, got)
+		urlPath, datePublished := parseFilename(tc.input)
+		if urlPath != tc.expectedUrlPath {
+			t.Errorf("expected %v, got %v", tc.expectedUrlPath, urlPath)
+		}
+
+		if !datePublished.Equal(tc.expectedDatePublished) {
+			t.Errorf("expected %v, got %v", tc.expectedDatePublished, datePublished)
 		}
 	}
 }
