@@ -29,7 +29,7 @@ var md = goldmark.New(
 	),
 )
 
-var templates = template.Must(template.ParseFS(os.DirFS("templates/"), "*.html"))
+var templates *template.Template
 
 //go:embed sitemap.xsl
 var sitemapXSL []byte
@@ -426,6 +426,11 @@ func parseConfig() (*Config, error) {
 func main() {
 	var err error
 	timeStart := time.Now()
+
+	templates, err = template.ParseFS(os.DirFS("templates/"), "*.html")
+	if err != nil {
+		log.Fatal("Error reading templates/ directory: %s", err)
+	}
 
 	site := Site{}
 
