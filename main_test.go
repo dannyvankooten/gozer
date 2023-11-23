@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"os"
-	"strings"
 	"testing"
 	"time"
 )
@@ -62,7 +61,7 @@ func TestParseContent(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(content, "<p>Hey, welcome on my site!</p>") {
+	if content != "<p>Hey, welcome on my site!</p>\n" {
 		t.Errorf("Invalid content. Got %v", content)
 	}
 }
