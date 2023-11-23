@@ -17,6 +17,8 @@ func TestExampleSite(t *testing.T) {
 		contains []byte
 	}{
 		{"index.html", []byte("<p>Hey, welcome on my site!</p>")},
+		{"about/index.html", []byte("<li>Dolor</li>")},
+		{"hello-world/index.html", []byte("This is a blog post.")},
 		{"favicon.ico", []byte{}},
 		{"feed.xml", []byte{}},
 		{"sitemap.xml", []byte("<url><loc>http://localhost:8080//</loc>")},

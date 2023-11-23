@@ -1,13 +1,17 @@
 # Gozer!
 
-Gozer is a simple static site generator written in Golang.
+Gozer is a fast & simple static site generator written in Golang.
 
 - Converts Markdown to HTML.
 - Allows you to use page-specific templates.
 - Creates an XML sitemap for search engines.
 - Creates an RSS feed for feed readers.
 
-Here's a [sample website built using Gozer](https://github.com/dannyvankooten/www.dannyvankooten.com).
+Sample websites using Gozer:
+
+- [Simplest possible example](example/)
+- [My personal website](https://github.com/dannyvankooten/www.dannyvankooten.com)
+
 
 ## Directory structure
 
