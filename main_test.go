@@ -1,10 +1,39 @@
 package main
 
 import (
+	"bytes"
+	"os"
 	"strings"
 	"testing"
 	"time"
 )
+
+func TestExampleSite(t *testing.T) {
+	_ = os.RemoveAll("build/")
+	buildSite("example/", "config.xml")
+
+	tests := []struct {
+		file     string
+		contains []byte
+	}{
+		{"index.html", []byte("<p>Hey, welcome on my site!</p>")},
+		{"favicon.ico", []byte{}},
+		{"feed.xml", []byte{}},
+		{"sitemap.xml", []byte("<url><loc>http://localhost:8080//</loc>")},
+		{"sitemap.xsl", []byte{}},
+	}
+
+	for _, tc := range tests {
+		content, err := os.ReadFile("build/" + tc.file)
+		if err != nil {
+			t.Errorf("Expected file, got error: %s", err)
+		}
+
+		if !bytes.Contains(content, tc.contains) {
+			t.Errorf("Output file %s does not have expected content %s", tc.file, tc.contains)
+		}
+	}
+}
 
 func TestParseFrontMatter(t *testing.T) {
 	p := &Page{

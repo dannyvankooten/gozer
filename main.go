@@ -148,7 +148,7 @@ func (s *Site) buildPage(p *Page) error {
 	}
 
 	dest := p.UrlPath + "index.html"
-	if err := os.MkdirAll("build/"+filepath.Dir(dest), 0655); err != nil {
+	if err := os.MkdirAll("build/"+filepath.Dir(dest), 0755); err != nil {
 		return err
 	}
 
@@ -405,6 +405,15 @@ Options:
 		rootPath = strings.TrimSuffix(rootPath, "/") + "/"
 	}
 
+	buildSite(rootPath, configFile)
+
+	if command == "serve" {
+		log.Info("Listening on http://localhost:8080\n")
+		log.Fatal("Hello", http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build/"))))
+	}
+}
+
+func buildSite(rootPath string, configFile string) {
 	var err error
 	timeStart := time.Now()
 
@@ -453,9 +462,4 @@ Options:
 	}
 
 	log.Info("Built site containing %d pages in %d ms\n", len(site.pages), time.Since(timeStart).Milliseconds())
-
-	if command == "serve" {
-		log.Info("Listening on http://localhost:8080\n")
-		log.Fatal("Hello", http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build/"))))
-	}
 }
