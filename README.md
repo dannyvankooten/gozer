@@ -12,7 +12,6 @@ Sample websites using Gozer:
 - [Simplest possible example](example/)
 - [My personal website](https://github.com/dannyvankooten/www.dannyvankooten.com)
 
-
 ## Directory structure
 
 Gozer expects a certain directory structure in order to build your site correctly.
@@ -36,14 +35,16 @@ Gozer - a fast & simple static site generator
 Usage: gozer [OPTIONS] <COMMAND>
 
 Commands:
-	build	Deletes the output directory if there is one and builds the site
-	serve	Builds the site and starts an HTTP server on http://localhost:8080
+    build   Deletes the output directory if there is one and builds the site
+    serve   Builds the site and starts an HTTP server on http://localhost:8080
+    new             Creates a new site structure in the given directory
 
 Options:
-	-r, --root <ROOT> Directory to use as root of project (default: .)
-	-c, --config <CONFIG> Path to confiruation file (default: config.xml)
+    -r, --root <ROOT> Directory to use as root of project (default: .)
+    -c, --config <CONFIG> Path to confiruation file (default: config.xml)
 ```
 
+Run `gozer new` in an empty directory to quickly create the directory structure for a basic site.
 
 ## Content files
 

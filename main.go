@@ -385,7 +385,7 @@ func main() {
 	flag.Parse()
 
 	command := os.Args[len(os.Args)-1]
-	if command != "build" && command != "serve" {
+	if command != "build" && command != "serve" && command != "new" {
 		fmt.Printf(`Gozer - a fast & simple static site generator
 
 Usage: gozer [OPTIONS] <COMMAND>
@@ -393,6 +393,7 @@ Usage: gozer [OPTIONS] <COMMAND>
 Commands:
 	build	Deletes the output directory if there is one and builds the site
 	serve	Builds the site and starts an HTTP server on http://localhost:8080
+	new		Creates a new site structure in the given directory
 
 Options:
 	-r, --root <ROOT> Directory to use as root of project (default: .)
@@ -401,8 +402,16 @@ Options:
 		return
 	}
 
+	// ensure rootPath has a trailing slash
 	if rootPath != "" {
 		rootPath = strings.TrimSuffix(rootPath, "/") + "/"
+	}
+
+	if command == "new" {
+		if err := createDirectoryStructure(rootPath); err != nil {
+			log.Fatal("Error creating site structure: ", err)
+		}
+		return
 	}
 
 	buildSite(rootPath, configFile)
@@ -411,6 +420,44 @@ Options:
 		log.Info("Listening on http://localhost:8080\n")
 		log.Fatal("Hello", http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build/"))))
 	}
+}
+
+func createDirectoryStructure(rootPath string) error {
+	if err := os.Mkdir(rootPath+"content", 0755); err != nil {
+		return err
+	}
+	if err := os.Mkdir(rootPath+"templates", 0755); err != nil {
+		return err
+	}
+	if err := os.Mkdir(rootPath+"public", 0755); err != nil {
+		return err
+	}
+
+	// create config.xml
+	fh, err := os.Create(rootPath + "config.xml")
+	if err != nil {
+		return err
+	}
+	_, _ = fh.WriteString("<config>\n\t<site_url>http://localhost:8080</site_url>\n</config>")
+	fh.Close()
+
+	// create default template
+	fh, err = os.Create(rootPath + "templates/default.html")
+	if err != nil {
+		return err
+	}
+	_, _ = fh.WriteString("<!DOCTYPE html>\n<head>\n\t<title>{{ .Title }}</title>\n</head>\n<body>\n{{ .Content }}\n</body>\n</html>")
+	fh.Close()
+
+	// create homepage
+	fh, err = os.Create(rootPath + "content/index.html")
+	if err != nil {
+		return err
+	}
+	_, _ = fh.WriteString("+++\ntitle = \"Gozer!\"\n+++\n\nWelcome to my website.\n")
+	fh.Close()
+
+	return nil
 }
 
 func buildSite(rootPath string, configFile string) {
