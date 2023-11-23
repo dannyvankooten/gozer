@@ -14,16 +14,23 @@ Sample websites using Gozer:
 
 ## Directory structure
 
-Gozer expects a certain directory structure in order to build your site correctly.
+Gozer expects the following directory structure in order to generate your site.
+You can create this structure by running `gozer new`.
 
 ```txt
 content/        # Your posts and pages
---- index.md    # Will be generated at build/index.html
---- about.md    # Will be generated at build/about/index.html
 templates/      # Your Go templates
 public/         # Any static files
 config.xml      # Configuration file
 ```
+
+Placing Markdown files in your `content/` directory will create a page in your build directory after running `gozer build`.
+
+For example:
+
+- `content/index.md` creates a file `build/index.html` so it is accessible over HTTP at `/`
+- `content/about.md` creates a file `build/about/index.html` so it is accessible over HTTP at `/about/`.
+
 
 ## Commands
 
@@ -43,8 +50,6 @@ Options:
     -r, --root <ROOT> Directory to use as root of project (default: .)
     -c, --config <CONFIG> Path to confiruation file (default: config.xml)
 ```
-
-Run `gozer new` in an empty directory to quickly create the directory structure for a basic site.
 
 ## Content files
 
