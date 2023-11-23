@@ -21,5 +21,5 @@ func (l *logger) Info(format string, value ...any) {
 }
 
 func (l *logger) Fatal(format string, value ...any) {
-	stdlog.Printf("\u001B[0;31m[FATAL]\u001B[0;39m "+format, value)
+	stdlog.Fatalf("\u001B[0;31m[FATAL]\u001B[0;39m "+format, value)
 }

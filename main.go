@@ -6,6 +6,7 @@ import (
 	_ "embed"
 	"encoding/xml"
 	"errors"
+	"flag"
 	"fmt"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/renderer/html"
@@ -46,34 +47,9 @@ type Page struct {
 	Filepath      string
 }
 
-func NewPageFromFile(file string, baseUrl string) (*Page, error) {
-	info, err := os.Stat(file)
-	if err != nil {
-		return nil, err
-	}
-
-	urlPath, datePublished := parseFilename(file)
-
-	p := Page{
-		Filepath:      file,
-		UrlPath:       urlPath,
-		DatePublished: datePublished,
-		DateModified:  info.ModTime(),
-		Template:      "default.html",
-	}
-
-	p.Permalink = baseUrl + p.UrlPath
-
-	if err := parseFrontMatter(&p); err != nil {
-		return nil, err
-	}
-
-	return &p, nil
-}
-
 // parseFilename parses the URL path and optional date component from the given file path
-func parseFilename(path string) (string, time.Time) {
-	path = strings.TrimPrefix(path, "content/")
+func parseFilename(path string, rootDir string) (string, time.Time) {
+	path = strings.TrimPrefix(path, rootDir+"content/")
 	path = strings.TrimSuffix(path, ".md")
 	path = strings.TrimSuffix(path, "index")
 
@@ -172,7 +148,7 @@ func (s *Site) buildPage(p *Page) error {
 	}
 
 	dest := p.UrlPath + "index.html"
-	if err := os.MkdirAll("build/"+filepath.Dir(dest), 0755); err != nil {
+	if err := os.MkdirAll("build/"+filepath.Dir(dest), 0655); err != nil {
 		return err
 	}
 
@@ -191,35 +167,55 @@ func (s *Site) buildPage(p *Page) error {
 		"Page":    p,
 		"Posts":   s.posts,
 		"Pages":   s.pages,
-		"SiteUrl": s.config.SiteUrl,
+		"SiteUrl": s.SiteUrl,
 		"Title":   p.Title,
 		"Content": template.HTML(content),
 	})
 }
 
 type Site struct {
-	pages  []Page
-	posts  []Page
-	config *Config
+	pages []Page
+	posts []Page
+
+	SiteUrl string
+	RootDir string
 }
 
 func (s *Site) AddPageFromFile(file string) error {
-	p, err := NewPageFromFile(file, s.config.SiteUrl)
+	info, err := os.Stat(file)
 	if err != nil {
 		return err
 	}
 
-	s.pages = append(s.pages, *p)
+	urlPath, datePublished := parseFilename(file, s.RootDir)
+
+	p := Page{
+		Filepath:      file,
+		UrlPath:       urlPath,
+		DatePublished: datePublished,
+		DateModified:  info.ModTime(),
+		Template:      "default.html",
+	}
+
+	p.Permalink = s.SiteUrl + p.UrlPath
+
+	if err := parseFrontMatter(&p); err != nil {
+		return err
+	}
+
+	s.pages = append(s.pages, p)
+
+	// every page with a date is assumed to be a blog post
 	if !p.DatePublished.IsZero() {
-		s.posts = append(s.posts, *p)
+		s.posts = append(s.posts, p)
 	}
 
 	return nil
 }
 
-func (s *Site) readContent() error {
+func (s *Site) readContent(dir string) error {
 	// walk over files in "content" directory
-	err := filepath.WalkDir("content", func(file string, d fs.DirEntry, err error) error {
+	err := filepath.WalkDir(dir, func(file string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
 			return nil
 		}
@@ -253,7 +249,7 @@ func (s *Site) createSitemap() error {
 	urls := make([]Url, 0, len(s.pages))
 	for _, p := range s.pages {
 		urls = append(urls, Url{
-			Loc:     s.config.SiteUrl + p.UrlPath,
+			Loc:     s.SiteUrl + p.UrlPath,
 			LastMod: p.DateModified.Format(time.RFC1123Z),
 		})
 	}
@@ -325,10 +321,10 @@ func (s *Site) createRSSFeed() error {
 
 		items = append(items, Item{
 			Title:       p.Title,
-			Link:        s.config.SiteUrl + p.UrlPath,
+			Link:        s.SiteUrl + p.UrlPath,
 			Description: pageContent,
 			PubDate:     p.DatePublished.Format(time.RFC1123Z),
-			GUID:        s.config.SiteUrl + p.UrlPath,
+			GUID:        s.SiteUrl + p.UrlPath,
 		})
 	}
 
@@ -337,7 +333,7 @@ func (s *Site) createRSSFeed() error {
 		Atom:    "http://www.w3.org/2005/Atom",
 		Channel: Channel{
 			Title:         "Site title",
-			Link:          s.config.SiteUrl,
+			Link:          s.SiteUrl,
 			Generator:     "Gosite",
 			LastBuildDate: time.Now().Format(time.RFC1123Z),
 			Items:         items,
@@ -361,8 +357,8 @@ func (s *Site) createRSSFeed() error {
 	return nil
 }
 
-func parseConfig() (*Config, error) {
-	wr, err := os.Open("config.xml")
+func parseConfig(file string) (*Config, error) {
+	wr, err := os.Open(file)
 	if err != nil {
 		return nil, err
 	}
@@ -378,24 +374,59 @@ func parseConfig() (*Config, error) {
 }
 
 func main() {
+	configFile := "config.xml"
+	rootPath := ""
+
+	// parse flags
+	flag.StringVar(&configFile, "config", configFile, "")
+	flag.StringVar(&configFile, "c", configFile, "")
+	flag.StringVar(&rootPath, "root", rootPath, "")
+	flag.StringVar(&rootPath, "r", rootPath, "")
+	flag.Parse()
+
+	command := os.Args[len(os.Args)-1]
+	if command != "build" && command != "serve" {
+		fmt.Printf(`Gozer - a fast & simple static site generator
+
+Usage: gozer [OPTIONS] <COMMAND>
+
+Commands:
+	build	Deletes the output directory if there is one and builds the site
+	serve	Builds the site and starts an HTTP server on http://localhost:8080
+
+Options:
+	-r, --root <ROOT> Directory to use as root of project (default: .)
+	-c, --config <CONFIG> Path to confiruation file (default: config.xml)
+`)
+		return
+	}
+
+	if rootPath != "" {
+		rootPath = strings.TrimSuffix(rootPath, "/") + "/"
+	}
+
 	var err error
 	timeStart := time.Now()
 
-	templates, err = template.ParseFS(os.DirFS("templates/"), "*.html")
+	templates, err = template.ParseFS(os.DirFS(rootPath+"templates/"), "*.html")
 	if err != nil {
 		log.Fatal("Error reading templates/ directory: %s", err)
 	}
 
-	site := Site{}
-
 	// read config.xml
-	site.config, err = parseConfig()
+	var config *Config
+	config, err = parseConfig(rootPath + configFile)
 	if err != nil {
-		log.Fatal("Error reading config.xml: %w\n", err)
+		log.Fatal("Error reading configuration file at %s: %w\n", rootPath+configFile, err)
+	}
+
+	site := Site{
+		SiteUrl: config.SiteUrl,
+		RootDir: rootPath,
 	}
 
 	// read content
-	if err := site.readContent(); err != nil {
+	if err := site.readContent(rootPath + "content/"); err != nil {
 		log.Fatal("Error reading content/: %s", err)
 	}
 
@@ -406,24 +437,24 @@ func main() {
 		}
 	}
 
-	// create sitemap
+	// create XML sitemap
 	if err := site.createSitemap(); err != nil {
 		log.Warn("Error creating sitemap: %s\n", err)
 	}
 
-	// create sitemap
+	// create RSS feed
 	if err := site.createRSSFeed(); err != nil {
 		log.Warn("Error creating RSS feed: %s\n", err)
 	}
 
 	// static files
-	if err := copyDirRecursively("public", "build"); err != nil {
+	if err := copyDirRecursively(rootPath+"public/", "build/"); err != nil {
 		log.Fatal("Error copying public/ directory: %s", err)
 	}
 
 	log.Info("Built site containing %d pages in %d ms\n", len(site.pages), time.Since(timeStart).Milliseconds())
 
-	if len(os.Args) > 1 && os.Args[1] == "serve" {
+	if command == "serve" {
 		log.Info("Listening on http://localhost:8080\n")
 		log.Fatal("Hello", http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build/"))))
 	}

@@ -24,8 +24,22 @@ config.xml      # Configuration file
 
 ## Commands
 
-- `gozer` Builds the site into `build/`
-- `gozer serve` Builds the site into `build/` and starts an HTTP server on `localhost:8080` serving the `build/` directory.
+Run `gozer` without any arguments to view the help text.
+
+```
+Gozer - a fast & simple static site generator
+
+Usage: gozer [OPTIONS] <COMMAND>
+
+Commands:
+	build	Deletes the output directory if there is one and builds the site
+	serve	Builds the site and starts an HTTP server on http://localhost:8080
+
+Options:
+	-r, --root <ROOT> Directory to use as root of project (default: .)
+	-c, --config <CONFIG> Path to confiruation file (default: config.xml)
+```
+
 
 ## Content files
 

@@ -50,7 +50,7 @@ func TestFilepathToUrlpath(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		urlPath, datePublished := parseFilename(tc.input)
+		urlPath, datePublished := parseFilename(tc.input, "")
 		if urlPath != tc.expectedUrlPath {
 			t.Errorf("expected %v, got %v", tc.expectedUrlPath, urlPath)
 		}
