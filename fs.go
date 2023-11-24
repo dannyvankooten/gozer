@@ -9,17 +9,6 @@ import (
 	"strings"
 )
 
-func writeToFile(name string, data []byte) error {
-	fh, err := os.Create(name)
-	if err != nil {
-		return err
-	}
-	if _, err := fh.Write(data); err != nil {
-		return err
-	}
-	return fh.Close()
-}
-
 func copyFile(src string, dest string) error {
 	info, err := os.Stat(src)
 	if err != nil {

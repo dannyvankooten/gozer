@@ -420,17 +420,17 @@ func createDirectoryStructure(rootPath string) error {
 	}
 
 	// create configuration file
-	if err := writeToFile(rootPath+"config.toml", []byte("url = \"http://localhost:8080\"\ntitle = \"My website\"\n")); err != nil {
+	if err := os.WriteFile(rootPath+"config.toml", []byte("url = \"http://localhost:8080\"\ntitle = \"My website\"\n"), 0655); err != nil {
 		return err
 	}
 
 	// create default template
-	if err := writeToFile(rootPath+"templates/default.html", []byte("<!DOCTYPE html>\n<head>\n\t<title>{{ .Title }}</title>\n</head>\n<body>\n{{ .Content }}\n</body>\n</html>")); err != nil {
+	if err := os.WriteFile(rootPath+"templates/default.html", []byte("<!DOCTYPE html>\n<head>\n\t<title>{{ .Title }}</title>\n</head>\n<body>\n{{ .Content }}\n</body>\n</html>"), 0655); err != nil {
 		return err
 	}
 
 	// create homepage
-	if err := writeToFile(rootPath+"content/index.md", []byte("+++\ntitle = \"Gozer!\"\n+++\n\nWelcome to my website.\n")); err != nil {
+	if err := os.WriteFile(rootPath+"content/index.md", []byte("+++\ntitle = \"Gozer!\"\n+++\n\nWelcome to my website.\n"), 0655); err != nil {
 		return err
 	}
 
