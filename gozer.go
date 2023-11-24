@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -464,12 +465,20 @@ func buildSite(rootPath string, configFile string) {
 		log.Fatal("Error reading content/: %s", err)
 	}
 
+	var wg sync.WaitGroup
+
 	// build each individual page
+	wg.Add(len(site.pages))
 	for _, p := range site.pages {
-		if err := site.buildPage(&p); err != nil {
-			log.Warn("Error processing %s: %s\n", p.Filepath, err)
-		}
+		go func(p Page) {
+			defer wg.Done()
+
+			if err := site.buildPage(&p); err != nil {
+				log.Warn("Error processing %s: %s\n", p.Filepath, err)
+			}
+		}(p)
 	}
+	wg.Wait()
 
 	// create XML sitemap
 	if err := site.createSitemap(); err != nil {
