@@ -78,11 +78,13 @@ func parseFrontMatter(p *Page) error {
 	}
 	defer fh.Close()
 
-	var data bytes.Buffer
-	var buf = make([]byte, 1024)
-	if _, err := fh.Read(buf); err != nil {
+	buf := make([]byte, 1024)
+	n, err := fh.Read(buf)
+	if err != nil {
 		return err
 	}
+
+	buf = buf[:n]
 	if !bytes.HasPrefix(buf, frontMatter) {
 		return nil
 	}
@@ -90,20 +92,13 @@ func parseFrontMatter(p *Page) error {
 	// strip front matter prefix
 	buf = buf[3:]
 
-	for {
-		pos := bytes.Index(buf, frontMatter)
-		if pos == -1 {
-			data.Write(buf)
-		} else {
-			data.Write(buf[:pos])
-			break
-		}
-
-		fh.Read(buf)
+	// find pos of closing front matter
+	pos := bytes.Index(buf, frontMatter)
+	if pos == -1 {
+		return errors.New("missing closing front-matter identifier")
 	}
 
-	// find pos of closing front matter
-	return toml.Unmarshal(data.Bytes(), p)
+	return toml.Unmarshal(buf[:pos], p)
 }
 
 func (p *Page) ParseContent() (string, error) {

@@ -121,7 +121,6 @@ func TestFilepathToUrlpath(t *testing.T) {
 }
 
 func BenchmarkParseFrontMatter(b *testing.B) {
-	// Use a sample input file here consisting of well over 1024 bytes so that we test the full range of buffered reads
 	data := `+++
 title = "My page title"
 template = "Page template"
