@@ -125,13 +125,17 @@ func (p *Page) ParseContent() (string, error) {
 		fileContent = fileContent[pos+6:]
 	}
 
-	// TODO: Only process Markdown if this is a .md file
-	var buf bytes.Buffer
-	if err := md.Convert(fileContent, &buf); err != nil {
-		return "", err
+	// If source file has HTML extension, return content directly
+	if strings.HasSuffix(p.Filepath, ".html") {
+		return string(fileContent), nil
 	}
 
-	return string(buf.Bytes()), nil
+	// Otherwise, parse as Markdown
+	var buf2 strings.Builder
+	if err := md.Convert(fileContent, &buf2); err != nil {
+		return "", err
+	}
+	return buf2.String(), nil
 }
 
 func (s *Site) buildPage(p *Page) error {
