@@ -29,7 +29,7 @@ func TestExampleSite(t *testing.T) {
 		},
 		{"favicon.ico", nil},
 		{"feed.xml", nil},
-		{"sitemap.xml", [][]byte{[]byte("<url><loc>http://localhost:8080//</loc>")}},
+		{"sitemap.xml", [][]byte{[]byte("<url><loc>http://localhost:8080/</loc>")}},
 		{"sitemap.xsl", nil},
 	}
 
@@ -101,7 +101,7 @@ func TestFilepathToUrlpath(t *testing.T) {
 		expectedUrlPath       string
 		expectedDatePublished time.Time
 	}{
-		{input: "content/index.md", expectedUrlPath: "/", expectedDatePublished: time.Time{}},
+		{input: "content/index.md", expectedUrlPath: "", expectedDatePublished: time.Time{}},
 		{input: "content/about.md", expectedUrlPath: "about/", expectedDatePublished: time.Time{}},
 		{input: "content/projects/gozer.md", expectedUrlPath: "projects/gozer/", expectedDatePublished: time.Time{}},
 		{input: "content/2023-11-23-hello-world.md", expectedUrlPath: "hello-world/", expectedDatePublished: time.Date(2023, 11, 23, 0, 0, 0, 0, time.UTC)},
