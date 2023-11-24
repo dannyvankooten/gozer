@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/BurntSushi/toml"
 	"github.com/yuin/goldmark"
 	"github.com/yuin/goldmark/renderer/html"
 	"html/template"
@@ -33,8 +34,13 @@ var templates *template.Template
 //go:embed sitemap.xsl
 var sitemapXSL []byte
 
-type Config struct {
-	SiteUrl string `xml:"site_url"`
+type Site struct {
+	pages []Page
+	posts []Page
+
+	Title   string `toml:"title"`
+	SiteUrl string `toml:"url"`
+	RootDir string
 }
 
 type Page struct {
@@ -51,6 +57,7 @@ type Page struct {
 func parseFilename(path string, rootDir string) (string, time.Time) {
 	path = strings.TrimPrefix(path, rootDir+"content/")
 	path = strings.TrimSuffix(path, ".md")
+	path = strings.TrimSuffix(path, ".html")
 	path = strings.TrimSuffix(path, "index")
 
 	filename := filepath.Base(path)
@@ -81,36 +88,22 @@ func parseFrontMatter(p *Page) error {
 		return errors.New("missing front matter")
 	}
 
+	var fm bytes.Buffer
+
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := scanner.Bytes()
 
 		// quit if at end of front matter
-		if line == string(frontMatter) {
+		if bytes.Equal(line, frontMatter) {
 			break
 		}
 
-		pos := strings.Index(line, "=")
-		if pos == -1 {
-			continue
-		}
+		fm.Write(line)
+		fm.Write([]byte("\n"))
+	}
 
-		name := strings.TrimSpace(line[0:pos])
-		value := strings.TrimSpace(line[pos+1:])
-		if value[0] == '"' {
-			value = strings.Trim(value, "\"")
-		}
-
-		switch name {
-		case "title":
-			p.Title = value
-		case "template":
-			p.Template = value
-		case "date":
-			// discard, we get this from filename only now
-		default:
-			log.Warn("Unknown front-matter key in %s: %#v\n", p.Filepath, name)
-		}
-
+	if _, err := toml.Decode(fm.String(), p); err != nil {
+		return err
 	}
 
 	return nil
@@ -171,14 +164,6 @@ func (s *Site) buildPage(p *Page) error {
 		"Title":   p.Title,
 		"Content": template.HTML(content),
 	})
-}
-
-type Site struct {
-	pages []Page
-	posts []Page
-
-	SiteUrl string
-	RootDir string
 }
 
 func (s *Site) AddPageFromFile(file string) error {
@@ -357,24 +342,20 @@ func (s *Site) createRSSFeed() error {
 	return nil
 }
 
-func parseConfig(file string) (*Config, error) {
-	wr, err := os.Open(file)
+func parseConfig(s *Site, file string) error {
+	_, err := toml.DecodeFile(file, s)
 	if err != nil {
-		return nil, err
-	}
-	defer wr.Close()
-	var config Config
-	if err := xml.NewDecoder(wr).Decode(&config); err != nil {
-		return nil, err
+		return err
 	}
 
-	config.SiteUrl = strings.TrimSuffix(config.SiteUrl, "/") + "/"
+	// ensure site url has trailing slash
+	s.SiteUrl = strings.TrimSuffix(s.SiteUrl, "/") + "/"
 
-	return &config, nil
+	return nil
 }
 
 func main() {
-	configFile := "config.xml"
+	configFile := "config.toml"
 	rootPath := ""
 
 	// parse flags
@@ -397,7 +378,7 @@ Commands:
 
 Options:
 	-r, --root <ROOT> Directory to use as root of project (default: .)
-	-c, --config <CONFIG> Path to configuration file (default: config.xml)
+	-c, --config <CONFIG> Path to configuration file (default: config.toml)
 `)
 		return
 	}
@@ -423,6 +404,7 @@ Options:
 }
 
 func createDirectoryStructure(rootPath string) error {
+
 	if err := os.Mkdir(rootPath+"content", 0755); err != nil {
 		return err
 	}
@@ -433,12 +415,12 @@ func createDirectoryStructure(rootPath string) error {
 		return err
 	}
 
-	// create config.xml
-	fh, err := os.Create(rootPath + "config.xml")
+	// create configuration file
+	fh, err := os.Create(rootPath + "config.toml")
 	if err != nil {
 		return err
 	}
-	_, _ = fh.WriteString("<config>\n\t<site_url>http://localhost:8080</site_url>\n</config>")
+	_, _ = fh.Write([]byte("url = \"http://localhost:8080\"\ntitle = \"My website\"\n"))
 	fh.Close()
 
 	// create default template
@@ -450,7 +432,7 @@ func createDirectoryStructure(rootPath string) error {
 	fh.Close()
 
 	// create homepage
-	fh, err = os.Create(rootPath + "content/index.html")
+	fh, err = os.Create(rootPath + "content/index.md")
 	if err != nil {
 		return err
 	}
@@ -470,15 +452,12 @@ func buildSite(rootPath string, configFile string) {
 	}
 
 	// read config.xml
-	var config *Config
-	config, err = parseConfig(rootPath + configFile)
-	if err != nil {
-		log.Fatal("Error reading configuration file at %s: %w\n", rootPath+configFile, err)
+	site := &Site{
+		RootDir: rootPath,
 	}
 
-	site := Site{
-		SiteUrl: config.SiteUrl,
-		RootDir: rootPath,
+	if err := parseConfig(site, rootPath+configFile); err != nil {
+		log.Fatal("Error reading configuration file at %s: %w\n", rootPath+configFile, err)
 	}
 
 	// read content

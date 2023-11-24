@@ -21,7 +21,7 @@ You can create this structure by running `gozer new`.
 content/        # Your posts and pages
 templates/      # Your Go templates
 public/         # Any static files
-config.xml      # Configuration file
+config.toml     # Configuration file
 ```
 
 Placing Markdown files in your `content/` directory will create a page in your build directory after running `gozer build`.
@@ -48,12 +48,12 @@ Commands:
 
 Options:
     -r, --root <ROOT> Directory to use as root of project (default: .)
-    -c, --config <CONFIG> Path to configuration file (default: config.xml)
+    -c, --config <CONFIG> Path to configuration file (default: config.toml)
 ```
 
 ## Content files
 
-Each file in your `content/` directory should end in `.md` and have front matter specifying the page title:
+Each file in your `content/` directory should end in `.md` and have TOML front matter specifying the page title:
 
 ```md
 +++
