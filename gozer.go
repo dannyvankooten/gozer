@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	_ "embed"
 	"encoding/xml"
@@ -73,40 +72,38 @@ func parseFilename(path string, rootDir string) (string, time.Time) {
 }
 
 func parseFrontMatter(p *Page) error {
-	// open file to read front matter
 	fh, err := os.Open(p.Filepath)
 	if err != nil {
 		return err
 	}
 	defer fh.Close()
-	scanner := bufio.NewScanner(fh)
 
-	// opening front matter
-	// TODO: Make front matter optional?
-	scanner.Scan()
-	if !bytes.Equal(scanner.Bytes(), frontMatter) {
-		return errors.New("missing front matter")
+	var data bytes.Buffer
+	var buf = make([]byte, 1024)
+	if _, err := fh.Read(buf); err != nil {
+		return err
+	}
+	if !bytes.HasPrefix(buf, frontMatter) {
+		return nil
 	}
 
-	var fm bytes.Buffer
+	// strip front matter prefix
+	buf = buf[3:]
 
-	for scanner.Scan() {
-		line := scanner.Bytes()
-
-		// quit if at end of front matter
-		if bytes.Equal(line, frontMatter) {
+	for {
+		pos := bytes.Index(buf, frontMatter)
+		if pos == -1 {
+			data.Write(buf)
+		} else {
+			data.Write(buf[:pos])
 			break
 		}
 
-		fm.Write(line)
-		fm.Write([]byte("\n"))
+		fh.Read(buf)
 	}
 
-	if _, err := toml.Decode(fm.String(), p); err != nil {
-		return err
-	}
-
-	return nil
+	// find pos of closing front matter
+	return toml.Unmarshal(data.Bytes(), p)
 }
 
 func (p *Page) ParseContent() (string, error) {
@@ -179,12 +176,11 @@ func (s *Site) AddPageFromFile(file string) error {
 	p := Page{
 		Filepath:      file,
 		UrlPath:       urlPath,
+		Permalink:     s.SiteUrl + urlPath,
 		DatePublished: datePublished,
 		DateModified:  info.ModTime(),
 		Template:      "default.html",
 	}
-
-	p.Permalink = s.SiteUrl + p.UrlPath
 
 	if err := parseFrontMatter(&p); err != nil {
 		return err
@@ -201,6 +197,8 @@ func (s *Site) AddPageFromFile(file string) error {
 }
 
 func (s *Site) readContent(dir string) error {
+	defer measure("readContent")()
+
 	// walk over files in "content" directory
 	err := filepath.WalkDir(dir, func(file string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
@@ -218,6 +216,8 @@ func (s *Site) readContent(dir string) error {
 }
 
 func (s *Site) createSitemap() error {
+	defer measure("createSitemap")()
+
 	type Url struct {
 		XMLName xml.Name `xml:"url"`
 		Loc     string   `xml:"loc"`
@@ -236,7 +236,7 @@ func (s *Site) createSitemap() error {
 	urls := make([]Url, 0, len(s.pages))
 	for _, p := range s.pages {
 		urls = append(urls, Url{
-			Loc:     s.SiteUrl + p.UrlPath,
+			Loc:     p.Permalink,
 			LastMod: p.DateModified.Format(time.RFC1123Z),
 		})
 	}
@@ -255,11 +255,10 @@ func (s *Site) createSitemap() error {
 	}
 	defer wr.Close()
 
-	enc := xml.NewEncoder(wr)
-	if _, err := wr.WriteString(`<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>`); err != nil {
+	if _, err := wr.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>`)); err != nil {
 		return err
 	}
-	if err := enc.Encode(env); err != nil {
+	if err := xml.NewEncoder(wr).Encode(env); err != nil {
 		return err
 	}
 
@@ -272,6 +271,7 @@ func (s *Site) createSitemap() error {
 }
 
 func (s *Site) createRSSFeed() error {
+	defer measure("createRSSFeed")()
 
 	type Item struct {
 		Title       string `xml:"title"`
@@ -303,15 +303,16 @@ func (s *Site) createRSSFeed() error {
 	for _, p := range s.posts[0:n] {
 		pageContent, err := p.ParseContent()
 		if err != nil {
+			log.Warn("error parsing content of %s: %s", p.Filepath, err)
 			continue
 		}
 
 		items = append(items, Item{
 			Title:       p.Title,
-			Link:        s.SiteUrl + p.UrlPath,
+			Link:        p.Permalink,
 			Description: pageContent,
 			PubDate:     p.DatePublished.Format(time.RFC1123Z),
-			GUID:        s.SiteUrl + p.UrlPath,
+			GUID:        p.Permalink,
 		})
 	}
 
@@ -333,7 +334,7 @@ func (s *Site) createRSSFeed() error {
 	}
 	defer wr.Close()
 
-	if _, err := wr.WriteString(`<?xml version="1.0" encoding="UTF-8"?>`); err != nil {
+	if _, err := wr.Write([]byte(`<?xml version="1.0" encoding="UTF-8"?>`)); err != nil {
 		return err
 	}
 
@@ -342,6 +343,14 @@ func (s *Site) createRSSFeed() error {
 	}
 
 	return nil
+}
+
+// func to calculate and print execution time
+func measure(name string) func() {
+	start := time.Now()
+	return func() {
+		log.Info("%s execution time: %v\n", name, time.Since(start))
+	}
 }
 
 func parseConfig(s *Site, file string) error {

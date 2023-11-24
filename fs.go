@@ -51,6 +51,8 @@ func copyFile(src string, dest string) error {
 }
 
 func copyDirRecursively(src string, dst string) error {
+	defer measure("copyDirRecursively")()
+
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		outpath := dst + strings.TrimPrefix(path, src)
 		return copyFile(path, outpath)
