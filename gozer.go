@@ -318,7 +318,7 @@ func (s *Site) createRSSFeed() error {
 		Version: "2.0",
 		Atom:    "http://www.w3.org/2005/Atom",
 		Channel: Channel{
-			Title:         "Site title",
+			Title:         s.Title,
 			Link:          s.SiteUrl,
 			Generator:     "Gosite",
 			LastBuildDate: time.Now().Format(time.RFC1123Z),
