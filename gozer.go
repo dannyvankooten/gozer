@@ -67,7 +67,7 @@ func parseFilename(path string, rootDir string) (string, time.Time) {
 		}
 	}
 
-	if path != "" {
+	if path != "" && path[len(path)-1] != '/' {
 		path += "/"
 	}
 
