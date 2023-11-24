@@ -4,7 +4,6 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/xml"
-	"errors"
 	"flag"
 	"fmt"
 	"github.com/BurntSushi/toml"
@@ -96,7 +95,7 @@ func parseFrontMatter(p *Page) error {
 	// find pos of closing front matter
 	pos := bytes.Index(buf, frontMatter)
 	if pos == -1 {
-		return errors.New("missing closing front-matter identifier")
+		return fmt.Errorf("missing closing front-matter identifier in %s", p.Filepath)
 	}
 
 	return toml.Unmarshal(buf[:pos], p)
@@ -148,7 +147,7 @@ func (s *Site) buildPage(p *Page) error {
 
 	tmpl := templates.Lookup(p.Template)
 	if tmpl == nil {
-		return errors.New(fmt.Sprintf("Invalid template name: %s", p.Template))
+		return fmt.Errorf("invalid template name: %s", p.Template)
 	}
 
 	return tmpl.Execute(fh, map[string]any{
