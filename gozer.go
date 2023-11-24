@@ -235,7 +235,7 @@ func (s *Site) createSitemap() error {
 	for _, p := range s.pages {
 		urls = append(urls, Url{
 			Loc:     p.Permalink,
-			LastMod: p.DateModified.Format(time.RFC1123Z),
+			LastMod: p.DateModified.Format(time.RFC3339),
 		})
 	}
 
