@@ -115,14 +115,12 @@ func (p *Page) ParseContent() (string, error) {
 		return "", err
 	}
 
-	if len(fileContent) < 6 {
-		return "", errors.New("missing front matter")
-	}
-
 	// Skip front matter
-	pos := bytes.Index(fileContent[3:], frontMatter)
-	if pos > -1 {
-		fileContent = fileContent[pos+6:]
+	if len(fileContent) > 6 {
+		pos := bytes.Index(fileContent[3:], frontMatter)
+		if pos > -1 {
+			fileContent = fileContent[pos+6:]
+		}
 	}
 
 	// If source file has HTML extension, return content directly
@@ -144,12 +142,12 @@ func (s *Site) buildPage(p *Page) error {
 		return err
 	}
 
-	dest := p.UrlPath + "index.html"
-	if err := os.MkdirAll("build/"+filepath.Dir(dest), 0755); err != nil {
+	dest := "build/" + p.UrlPath + "index.html"
+	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
 		return err
 	}
 
-	fh, err := os.Create("build/" + dest)
+	fh, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
@@ -258,7 +256,7 @@ func (s *Site) createSitemap() error {
 	defer wr.Close()
 
 	enc := xml.NewEncoder(wr)
-	if _, err := wr.WriteString(`<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>` + "\n"); err != nil {
+	if _, err := wr.WriteString(`<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type="text/xsl" href="/sitemap.xsl"?>`); err != nil {
 		return err
 	}
 	if err := enc.Encode(env); err != nil {
@@ -335,11 +333,11 @@ func (s *Site) createRSSFeed() error {
 	}
 	defer wr.Close()
 
-	enc := xml.NewEncoder(wr)
-	if _, err := wr.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n"); err != nil {
+	if _, err := wr.WriteString(`<?xml version="1.0" encoding="UTF-8"?>`); err != nil {
 		return err
 	}
-	if err := enc.Encode(feed); err != nil {
+
+	if err := xml.NewEncoder(wr).Encode(feed); err != nil {
 		return err
 	}
 
@@ -353,7 +351,9 @@ func parseConfig(s *Site, file string) error {
 	}
 
 	// ensure site url has trailing slash
-	s.SiteUrl = strings.TrimSuffix(s.SiteUrl, "/") + "/"
+	if !strings.HasSuffix(s.SiteUrl, "/") {
+		s.SiteUrl += "/"
+	}
 
 	return nil
 }
@@ -388,8 +388,8 @@ Options:
 	}
 
 	// ensure rootPath has a trailing slash
-	if rootPath != "" {
-		rootPath = strings.TrimSuffix(rootPath, "/") + "/"
+	if rootPath != "" && !strings.HasSuffix(rootPath, "/") {
+		rootPath += "/"
 	}
 
 	if command == "new" {
@@ -420,28 +420,19 @@ func createDirectoryStructure(rootPath string) error {
 	}
 
 	// create configuration file
-	fh, err := os.Create(rootPath + "config.toml")
-	if err != nil {
+	if err := writeToFile(rootPath+"config.toml", []byte("url = \"http://localhost:8080\"\ntitle = \"My website\"\n")); err != nil {
 		return err
 	}
-	_, _ = fh.Write([]byte("url = \"http://localhost:8080\"\ntitle = \"My website\"\n"))
-	fh.Close()
 
 	// create default template
-	fh, err = os.Create(rootPath + "templates/default.html")
-	if err != nil {
+	if err := writeToFile(rootPath+"templates/default.html", []byte("<!DOCTYPE html>\n<head>\n\t<title>{{ .Title }}</title>\n</head>\n<body>\n{{ .Content }}\n</body>\n</html>")); err != nil {
 		return err
 	}
-	_, _ = fh.WriteString("<!DOCTYPE html>\n<head>\n\t<title>{{ .Title }}</title>\n</head>\n<body>\n{{ .Content }}\n</body>\n</html>")
-	fh.Close()
 
 	// create homepage
-	fh, err = os.Create(rootPath + "content/index.md")
-	if err != nil {
+	if err := writeToFile(rootPath+"content/index.md", []byte("+++\ntitle = \"Gozer!\"\n+++\n\nWelcome to my website.\n")); err != nil {
 		return err
 	}
-	_, _ = fh.WriteString("+++\ntitle = \"Gozer!\"\n+++\n\nWelcome to my website.\n")
-	fh.Close()
 
 	return nil
 }
