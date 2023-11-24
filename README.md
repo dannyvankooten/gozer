@@ -12,10 +12,17 @@ Sample websites using Gozer:
 - [Simplest possible example](example/)
 - [My personal website](https://github.com/dannyvankooten/www.dannyvankooten.com)
 
-## Directory structure
 
-Gozer expects the following directory structure in order to generate your site.
-You can create this structure by running `gozer new`.
+## Installation
+You can install Gozer using one of the following methods:
+
+- Download a precompiled binary from the [latest release](https://github.com/dannyvankooten/gozer/releases)
+- If you have the Go compiler installed: `go install github.com/dannyvankooten/gozer@latest`
+
+
+## Usage
+
+Run `gozer new` to quickly generate an empty directory structure.
 
 ```txt
 content/        # Your posts and pages
@@ -24,7 +31,9 @@ public/         # Any static files
 config.toml     # Configuration file
 ```
 
-Placing Markdown files in your `content/` directory will create a page in your build directory after running `gozer build`.
+Then, run `gozer build` to generate your site.
+
+Any Markdown files placed in your `content/` directory will result in an HTML page in your build directory after running `gozer build`.
 
 For example:
 
