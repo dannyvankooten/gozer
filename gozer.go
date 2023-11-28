@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/yuin/goldmark"
+	"github.com/yuin/goldmark/extension"
 	"github.com/yuin/goldmark/renderer/html"
 	"html/template"
 	"io/fs"
@@ -24,7 +25,7 @@ var md = goldmark.New(
 	goldmark.WithRendererOptions(
 		html.WithUnsafe(),
 	),
-)
+	goldmark.WithExtensions(extension.GFM))
 
 var frontMatter = []byte("+++")
 
@@ -195,8 +196,6 @@ func (s *Site) AddPageFromFile(file string) error {
 }
 
 func (s *Site) readContent(dir string) error {
-	defer measure("readContent")()
-
 	// walk over files in "content" directory
 	err := filepath.WalkDir(dir, func(file string, d fs.DirEntry, err error) error {
 		if d.IsDir() {
@@ -214,8 +213,6 @@ func (s *Site) readContent(dir string) error {
 }
 
 func (s *Site) createSitemap() error {
-	defer measure("createSitemap")()
-
 	type Url struct {
 		XMLName xml.Name `xml:"url"`
 		Loc     string   `xml:"loc"`
@@ -269,8 +266,6 @@ func (s *Site) createSitemap() error {
 }
 
 func (s *Site) createRSSFeed() error {
-	defer measure("createRSSFeed")()
-
 	type Item struct {
 		Title       string `xml:"title"`
 		Link        string `xml:"link"`
@@ -406,16 +401,23 @@ Options:
 		return
 	}
 
-	buildSite(rootPath, configFile)
-
 	if command == "serve" {
+		// setup fsnotify watcher
+		go watchDirs([]string{
+			rootPath + "content",
+			rootPath + "public",
+			rootPath + "templates",
+		}, func() {
+			buildSite(rootPath, configFile)
+		})
+
+		// serve site
 		log.Info("Listening on http://localhost:8080\n")
-		log.Fatal("Hello", http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build/"))))
+		_ = http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build/")))
 	}
 }
 
 func createDirectoryStructure(rootPath string) error {
-
 	if err := os.Mkdir(rootPath+"content", 0755); err != nil {
 		return err
 	}
@@ -470,16 +472,18 @@ func buildSite(rootPath string, configFile string) {
 	var wg sync.WaitGroup
 
 	// build each individual page
-	wg.Add(len(site.pages))
 	for _, p := range site.pages {
-		go func(p Page) {
-			defer wg.Done()
+		wg.Add(1)
 
+		go func(p Page) {
 			if err := site.buildPage(&p); err != nil {
 				log.Warn("Error processing %s: %s\n", p.Filepath, err)
 			}
+
+			wg.Done()
 		}(p)
 	}
+
 	wg.Wait()
 
 	// create XML sitemap
@@ -497,5 +501,5 @@ func buildSite(rootPath string, configFile string) {
 		log.Fatal("Error copying public/ directory: %s", err)
 	}
 
-	log.Info("Built site containing %d pages in %d ms\n", len(site.pages), time.Since(timeStart).Milliseconds())
+	log.Info("Built %d pages in %d ms\n", len(site.pages), time.Since(timeStart).Milliseconds())
 }
