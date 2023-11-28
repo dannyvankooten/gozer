@@ -55,6 +55,7 @@ type Page struct {
 
 // parseFilename parses the URL path and optional date component from the given file path
 func parseFilename(path string, rootDir string) (string, time.Time) {
+	path = filepath.ToSlash(path)
 	path = strings.TrimPrefix(path, rootDir+"content/")
 	path = strings.TrimSuffix(path, ".md")
 	path = strings.TrimSuffix(path, ".html")
@@ -68,7 +69,7 @@ func parseFilename(path string, rootDir string) (string, time.Time) {
 		}
 	}
 
-	if path != "" && path[len(path)-1] != '/' {
+	if path != "" && !strings.HasSuffix(path, "/") {
 		path += "/"
 	}
 
@@ -138,7 +139,7 @@ func (s *Site) buildPage(p *Page) error {
 		return err
 	}
 
-	dest := "build/" + p.UrlPath + "index.html"
+	dest := filepath.Join("build", p.UrlPath, "index.html")
 	if err := os.MkdirAll(filepath.Dir(dest), 0755); err != nil {
 		return err
 	}
@@ -244,7 +245,8 @@ func (s *Site) createSitemap() error {
 		Urls:           urls,
 	}
 
-	wr, err := os.Create("build/sitemap.xml")
+	sitemapFilename := filepath.Join("build", "sitemap.xml")
+	wr, err := os.Create(sitemapFilename)
 	if err != nil {
 		return err
 	}
@@ -258,7 +260,8 @@ func (s *Site) createSitemap() error {
 	}
 
 	// copy xml stylesheet
-	if err := os.WriteFile("build/sitemap.xsl", sitemapXSL, 0655); err != nil {
+	sitemapStylesheetFilename := filepath.Join("build", "sitemap.xsl")
+	if err := os.WriteFile(sitemapStylesheetFilename, sitemapXSL, 0655); err != nil {
 		return err
 	}
 
@@ -321,7 +324,8 @@ func (s *Site) createRSSFeed() error {
 		},
 	}
 
-	wr, err := os.Create("build/feed.xml")
+	rssFeedFilename := filepath.Join("build", "feed.xml")
+	wr, err := os.Create(rssFeedFilename)
 	if err != nil {
 		return err
 	}
@@ -389,11 +393,6 @@ Options:
 		return
 	}
 
-	// ensure rootPath has a trailing slash
-	if rootPath != "" && !strings.HasSuffix(rootPath, "/") {
-		rootPath += "/"
-	}
-
 	if command == "new" {
 		if err := createDirectoryStructure(rootPath); err != nil {
 			log.Fatal("Error creating site structure: ", err)
@@ -401,46 +400,43 @@ Options:
 		return
 	}
 
+	buildSite(rootPath, configFile)
+
 	if command == "serve" {
 		// setup fsnotify watcher
 		go watchDirs([]string{
-			rootPath + "content",
-			rootPath + "public",
-			rootPath + "templates",
+			filepath.Join(rootPath, "content"),
+			filepath.Join(rootPath, "public"),
+			filepath.Join(rootPath, "templates"),
 		}, func() {
 			buildSite(rootPath, configFile)
 		})
 
 		// serve site
 		log.Info("Listening on http://localhost:8080\n")
-		_ = http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build/")))
+		_ = http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build")))
 	}
 }
 
 func createDirectoryStructure(rootPath string) error {
-	if err := os.Mkdir(rootPath+"content", 0755); err != nil {
-		return err
-	}
-	if err := os.Mkdir(rootPath+"templates", 0755); err != nil {
-		return err
-	}
-	if err := os.Mkdir(rootPath+"public", 0755); err != nil {
-		return err
+	for _, dir := range []string{"content", "templates", "public"} {
+		if err := os.Mkdir(filepath.Join(rootPath, dir), 0755); err != nil {
+			return err
+		}
 	}
 
-	// create configuration file
-	if err := os.WriteFile(rootPath+"config.toml", []byte("url = \"http://localhost:8080\"\ntitle = \"My website\"\n"), 0655); err != nil {
-		return err
+	files := []struct {
+		Name    string
+		Content []byte
+	}{
+		{"config.toml", []byte("url = \"http://localhost:8080\"\ntitle = \"My website\"\n")},
+		{"templates/default.html", []byte("<!DOCTYPE html>\n<head>\n\t<title>{{ .Title }}</title>\n</head>\n<body>\n{{ .Content }}\n</body>\n</html>")},
+		{"content/index.md", []byte("+++\ntitle = \"Gozer!\"\n+++\n\nWelcome to my website.\n")},
 	}
-
-	// create default template
-	if err := os.WriteFile(rootPath+"templates/default.html", []byte("<!DOCTYPE html>\n<head>\n\t<title>{{ .Title }}</title>\n</head>\n<body>\n{{ .Content }}\n</body>\n</html>"), 0655); err != nil {
-		return err
-	}
-
-	// create homepage
-	if err := os.WriteFile(rootPath+"content/index.md", []byte("+++\ntitle = \"Gozer!\"\n+++\n\nWelcome to my website.\n"), 0655); err != nil {
-		return err
+	for _, f := range files {
+		if err := os.WriteFile(filepath.Join(rootPath, f.Name), f.Content, 0655); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -450,7 +446,7 @@ func buildSite(rootPath string, configFile string) {
 	var err error
 	timeStart := time.Now()
 
-	templates, err = template.ParseFS(os.DirFS(rootPath+"templates/"), "*.html")
+	templates, err = template.ParseGlob(filepath.Join(rootPath, "templates/*.html"))
 	if err != nil {
 		log.Fatal("Error reading templates/ directory: %s", err)
 	}
@@ -460,12 +456,12 @@ func buildSite(rootPath string, configFile string) {
 		RootDir: rootPath,
 	}
 
-	if err := parseConfig(site, rootPath+configFile); err != nil {
+	if err := parseConfig(site, filepath.Join(rootPath, configFile)); err != nil {
 		log.Fatal("Error reading configuration file at %s: %w\n", rootPath+configFile, err)
 	}
 
 	// read content
-	if err := site.readContent(rootPath + "content/"); err != nil {
+	if err := site.readContent(filepath.Join(rootPath, "content")); err != nil {
 		log.Fatal("Error reading content/: %s", err)
 	}
 
@@ -497,7 +493,7 @@ func buildSite(rootPath string, configFile string) {
 	}
 
 	// static files
-	if err := copyDirRecursively(rootPath+"public/", "build/"); err != nil {
+	if err := copyDirRecursively(filepath.Join(rootPath, "public"), "build"); err != nil {
 		log.Fatal("Error copying public/ directory: %s", err)
 	}
 

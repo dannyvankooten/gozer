@@ -43,15 +43,10 @@ func watchDirs(dirs []string, cb func()) {
 	}
 }
 
-func copyFile(src string, dest string) error {
-	info, err := os.Stat(src)
-	if err != nil {
-		return err
-	}
-
+func copyFile(src string, d fs.DirEntry, dest string) error {
 	// if it's a dir, just re-create it in build/
-	if info.IsDir() {
-		err := os.Mkdir(dest, info.Mode())
+	if d.IsDir() {
+		err := os.Mkdir(dest, d.Type())
 		if err != nil && !errors.Is(err, os.ErrExist) {
 			return err
 		}
@@ -59,27 +54,21 @@ func copyFile(src string, dest string) error {
 		return nil
 	}
 
-	// open input
+	// open source file
 	in, err := os.Open(src)
 	if err != nil {
 		return err
 	}
 	defer in.Close()
 
-	// create output
+	// create dest file
 	fh, err := os.Create(dest)
 	if err != nil {
 		return err
 	}
 	defer fh.Close()
 
-	// match file permissions
-	err = fh.Chmod(info.Mode())
-	if err != nil {
-		return err
-	}
-
-	// copy content
+	// copy src content into dest content
 	_, err = io.Copy(fh, in)
 	return err
 }
@@ -87,6 +76,6 @@ func copyFile(src string, dest string) error {
 func copyDirRecursively(src string, dst string) error {
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
 		outpath := dst + strings.TrimPrefix(path, src)
-		return copyFile(path, outpath)
+		return copyFile(path, d, outpath)
 	})
 }
