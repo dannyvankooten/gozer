@@ -91,9 +91,9 @@ Every template receives the following set of variables:
 ```
 Pages       # Slice of all pages in the site
 Posts       # Slice of all posts in the site (any page with a date in the filename)
-SiteUrl     # The root URL of the site
-Page        # The current page
-Title       # The current page title. Can also be access via Page.Title
+Site        # Global site properties: Url, Title
+Page        # The current page: Title, Permalink, UrlPath, DatePublished, DateModified
+Title       # The current page title, shorthand for Page.Title
 Content     # The current page's HTML content.
 ```
 

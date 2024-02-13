@@ -160,9 +160,17 @@ func (s *Site) buildPage(p *Page) error {
 		"Page":    p,
 		"Posts":   s.posts,
 		"Pages":   s.pages,
-		"SiteUrl": s.SiteUrl,
+		"Site": map[string]string{
+			"Url": s.SiteUrl,
+			"Title": s.Title,
+		},
+
+		// Shorthand for accessing through .Page.Title / .Page.Content
 		"Title":   p.Title,
 		"Content": template.HTML(content),
+
+		// Deprecated template variables, use .Site.Url instead
+		"SiteUrl": s.SiteUrl,
 	})
 }
 
