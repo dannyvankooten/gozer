@@ -25,10 +25,12 @@ You can install Gozer using one of the following methods:
 Run `gozer new` to quickly generate an empty directory structure.
 
 ```txt
-content/        # Your posts and pages
-templates/      # Your Go templates
-public/         # Any static files
-config.toml     # Configuration file
+├── config.toml                # Configuration file
+├── content                    # Posts and pages
+│   └── index.md
+├── public                     # Static files
+└── templates                  # Template files
+    └── default.html
 ```
 
 Then, run `gozer build` to generate your site.
