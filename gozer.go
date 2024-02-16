@@ -368,16 +368,19 @@ func parseConfig(s *Site, file string) error {
 func main() {
 	configFile := "config.toml"
 	rootPath := ""
+    showHelp := false
 
 	// parse flags
 	flag.StringVar(&configFile, "config", configFile, "")
 	flag.StringVar(&configFile, "c", configFile, "")
 	flag.StringVar(&rootPath, "root", rootPath, "")
 	flag.StringVar(&rootPath, "r", rootPath, "")
+    flag.BoolVar(&showHelp, "help", showHelp, "")
+    flag.BoolVar(&showHelp, "h", showHelp, "")
 	flag.Parse()
 
 	command := os.Args[len(os.Args)-1]
-	if command != "build" && command != "serve" && command != "new" {
+	if showHelp || (command != "build" && command != "serve" && command != "new") {
 		fmt.Printf(`Gozer - a fast & simple static site generator
 
 Usage: gozer [OPTIONS] <COMMAND>
