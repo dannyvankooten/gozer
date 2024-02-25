@@ -75,6 +75,9 @@ func copyFile(src string, d fs.DirEntry, dest string) error {
 
 func copyDirRecursively(src string, dst string) error {
 	return filepath.WalkDir(src, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
 		outpath := dst + strings.TrimPrefix(path, src)
 		return copyFile(path, d, outpath)
 	})
