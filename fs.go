@@ -46,7 +46,7 @@ func watchDirs(dirs []string, cb func()) {
 func copyFile(src string, d fs.DirEntry, dest string) error {
 	// if it's a dir, just re-create it in build/
 	if d.IsDir() {
-		err := os.Mkdir(dest, d.Type())
+		err := os.MkdirAll(dest, 0755)
 		if err != nil && !errors.Is(err, os.ErrExist) {
 			return err
 		}
