@@ -327,7 +327,7 @@ func (s *Site) createRSSFeed() error {
 		Channel: Channel{
 			Title:         s.Title,
 			Link:          s.SiteUrl,
-			Generator:     "Gosite",
+            Generator:     "Gozer",
 			LastBuildDate: time.Now().Format(time.RFC1123Z),
 			Items:         items,
 		},
