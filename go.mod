@@ -1,6 +1,6 @@
 module github.com/dannyvankooten/gozer
 
-go 1.21
+go 1.19
 
 require github.com/yuin/goldmark v1.6.0
 
