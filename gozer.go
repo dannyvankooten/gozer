@@ -303,7 +303,11 @@ func (s *Site) createRSSFeed() error {
 	}
 
 	// add 10 most recent posts to feed
-	n := min(len(s.posts), 10)
+	n := len(s.posts)
+	if n > 10 {
+		n = 10
+	}
+
 	items := make([]Item, 0, n)
 	for _, p := range s.posts[0:n] {
 		pageContent, err := p.ParseContent()
