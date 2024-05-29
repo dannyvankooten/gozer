@@ -3,3 +3,4 @@ build
 example/build
 
 dist/
+gozer
