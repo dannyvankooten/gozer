@@ -45,12 +45,25 @@ type Site struct {
 }
 
 type Page struct {
+	// Title of this page
 	Title         string
+
+	// Template this page uses for rendering. Defaults to "default.html".
 	Template      string
+
+	// Time this page was published (parsed from file name).
 	DatePublished time.Time
+
+	// Time this page was last modified (from filesystem).
 	DateModified  time.Time
+
+	// The full URL to this page (incl. site URL)
 	Permalink     string
+
+	// URL path for this page, relative to site URL
 	UrlPath       string
+
+	// Path to source file for this page, relative to content root
 	Filepath      string
 }
 
