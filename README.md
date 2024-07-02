@@ -1,4 +1,4 @@
-# Gozer!
+# Gozer! [![builds.sr.ht status](https://builds.sr.ht/~dvko/gozer.svg)](https://builds.sr.ht/~dvko/gozer?)
 
 Gozer is a fast & simple static site generator written in Golang.
 
@@ -134,6 +134,14 @@ To show a list of the 5 most recent posts:
     <a href="{{ .Permalink }}">{{ .Title }}</a> <small>{{ .DatePublished.Format "Jan 02, 2006" }}</small><br />
 {{ end }}
 ```
+
+## Contributing
+
+Gozer development happens on [Sourcehut](https://sr.ht/). Patches are accepted over email.
+
+- [Code repository](https://git.sr.ht/~dvko/gozer)
+- [Mailing list](https://lists.sr.ht/~dvko/gozer-devel)
+- [Issue tracker](https://todo.sr.ht/~dvko/gozer-issues)
 
 ## License
 
