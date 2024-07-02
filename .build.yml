@@ -1,6 +1,8 @@
 image: alpine/edge
 packages:
   - go
+secrets:
+  - f81fca6d-0276-4087-af74-711044e181fa
 tasks:
   - setup: |
       cd gozer
@@ -11,3 +13,7 @@ tasks:
   - test: |
       cd gozer
       go test
+  - github_mirror: |
+      cd gozer
+      git config --global credential.helper store
+      git push https://github.com/dannyvankooten/gozer.git --mirror
