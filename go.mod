@@ -1,4 +1,4 @@
-module github.com/dannyvankooten/gozer
+module git.sr.ht/~dvko/gozer
 
 go 1.19
 

@@ -10,15 +10,16 @@ Gozer is a fast & simple static site generator written in Golang.
 Sample websites using Gozer:
 
 - [Simplest possible example](example/)
-- [My personal website](https://github.com/dannyvankooten/www.dannyvankooten.com)
+- My personal website: [site](https://www.dannyvankooten.com/) - [source](https://git.sr.ht/~dvko/dannyvankooten.com)
 
 
 ## Installation
-You can install Gozer using one of the following methods:
 
-- Download a precompiled binary from the [latest release](https://github.com/dannyvankooten/gozer/releases)
-- If you have the Go compiler installed: `go install github.com/dannyvankooten/gozer@latest`
+You can install Gozer by first installing a Go compiler and then running:
 
+```sh
+go install git.sr.ht/~dvko/gozer@latest
+```
 
 ## Usage
 
