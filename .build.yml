@@ -1,0 +1,13 @@
+image: alpine/edge
+packages:
+  - go
+tasks:
+  - setup: |
+      cd gozer
+      go get .
+  - build: |
+      cd gozer
+      go build -v ./...
+  - test: |
+      cd gozer
+      go test
