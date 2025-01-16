@@ -98,6 +98,7 @@ Site        # Global site properties: Url, Title
 Page        # The current page: Title, Permalink, UrlPath, DatePublished, DateModified
 Title       # The current page title, shorthand for Page.Title
 Content     # The current page's HTML content.
+Now         # Timestamp of build, instance of time.Time
 ```
 
 The `Page` variable is an instance of the object below:

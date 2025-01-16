@@ -35,6 +35,8 @@ var templates *template.Template
 //go:embed sitemap.xsl
 var sitemapXSL []byte
 
+var now = time.Now()
+
 type Site struct {
 	pages []Page
 	posts []Page
@@ -181,6 +183,9 @@ func (s *Site) buildPage(p *Page) error {
 		// Shorthand for accessing through .Page.Title / .Page.Content
 		"Title":   p.Title,
 		"Content": template.HTML(content),
+
+		// Timestamp of build
+		"Now": now,
 
 		// Deprecated template variables, use .Site.Url instead
 		"SiteUrl": s.SiteUrl,
