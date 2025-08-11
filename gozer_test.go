@@ -84,9 +84,39 @@ func TestParseFrontMatter(t *testing.T) {
 	}
 }
 
+func TestParseFrontMatterDjot(t *testing.T) {
+	p := &Page{
+		Filepath: "example/content/djot.dj",
+	}
+
+	if err := parseFrontMatter(p); err != nil {
+		t.Fatal(err)
+	}
+
+	expectedTitle := "Multiple markup support"
+	if p.Title != expectedTitle {
+		t.Errorf("Invalid title. Expected %v, got %v", expectedTitle, p.Title)
+	}
+}
+
 func TestParseContent(t *testing.T) {
 	p := &Page{
 		Filepath: "example/content/index.md",
+	}
+
+	content, err := p.ParseContent()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if content != "<p>Hey, welcome on my site!</p>\n" {
+		t.Errorf("Invalid content. Got %v", content)
+	}
+}
+
+func TestParseContentDjot(t *testing.T) {
+	p := &Page{
+		Filepath: "example/content/djot_test.dj",
 	}
 
 	content, err := p.ParseContent()
@@ -111,6 +141,8 @@ func TestFilepathToUrlpath(t *testing.T) {
 		{input: "content/projects/gozer.md", expectedUrlPath: "projects/gozer/", expectedDatePublished: time.Time{}},
 		{input: "content/2023-11-23-hello-world.md", expectedUrlPath: "hello-world/", expectedDatePublished: time.Date(2023, 11, 23, 0, 0, 0, 0, time.UTC)},
 		{input: "content/blog/2023-11-23-here-we-are.md", expectedUrlPath: "blog/here-we-are/", expectedDatePublished: time.Date(2023, 11, 23, 0, 0, 0, 0, time.UTC)},
+		{input: "content/blog/2023-11-23-there-we-were.dj", expectedUrlPath: "blog/there-we-were/", expectedDatePublished: time.Date(2023, 11, 23, 0, 0, 0, 0, time.UTC)},
+		{input: "content/2023-11-23-hello-sunshine.dj", expectedUrlPath: "hello-sunshine/", expectedDatePublished: time.Date(2023, 11, 23, 0, 0, 0, 0, time.UTC)},
 	}
 
 	for _, tc := range tests {

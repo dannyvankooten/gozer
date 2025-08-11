@@ -1,6 +1,8 @@
 module git.sr.ht/~dvko/gozer
 
-go 1.19
+go 1.23
+
+toolchain go1.24.4
 
 require github.com/yuin/goldmark v1.6.0
 
@@ -9,4 +11,7 @@ require (
 	github.com/fsnotify/fsnotify v1.7.0
 )
 
-require golang.org/x/sys v0.4.0 // indirect
+require (
+	github.com/sivukhin/godjot/v2 v2.0.1-0.20250612185934-f0b56981998c // indirect
+	golang.org/x/sys v0.4.0 // indirect
+)

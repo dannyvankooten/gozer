@@ -1,0 +1,44 @@
++++
+title = "Multiple markup support"
++++
+
+djot is a Markdown-inspired, normalized, unambiguously parseable markup
+language, designed by John MacFarlane, the author of pandoc. John designed djot
+based on [his experience](https://johnmacfarlane.net/beyond-markdown.html)
+on the CommonMark working group. His justification for breaking with Markdown
+are [best described in the djot repository](https://github.com/jgm/djot#rationale).
+
+djot has broad feature overlap with CommonMark, but does not attempt to maintain
+complete backward compatability with Markdown, as hindered CommonMark. This
+allows djot to correct some ambiguities that make writing Markdown parsers
+complex. Some differences include:
+
+- djot is decoupled from HTML -- there's no HTML embedding.
+- djot is more normalized (e.g. there's only one way to mark up _emphasis_).
+- *strong* more closely reflects original ASCII email markup.
+- the elements that CommonMark depends on embeded HTML for have non-HTML syntax.
+- djot has native support for prose diffs: {-delete-} and {+insert+}.
+- autolinks, such as <https://www.djot.net/>.
+- list behaviors, especially in the context of other block element, are more
+  clearly defined and unambigious
+- djot provides a non-HTML mechanism for attaching attributes to elements{blue}
+
+As a consequency, djot allows cleaner markup of cross-target attributes; for example:
+
+```
+{#warning .sidebar}
+::: Warning
+This is a warning
+:::
+```
+
+in HTML becomes
+
+```
+<div id="warning" class="Warning sidebar">
+<p>This is a warning</p>
+</div>
+```
+
+but can also produce appropriate PDF, Typst, or other output without having to
+first convert to, and then render, HTML.

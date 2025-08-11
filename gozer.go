@@ -17,18 +17,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/yuin/goldmark"
-	"github.com/yuin/goldmark/extension"
-	"github.com/yuin/goldmark/renderer/html"
 )
-
-var md = goldmark.New(
-	goldmark.WithRendererOptions(
-		html.WithUnsafe(),
-	),
-	goldmark.WithExtensions(extension.GFM, extension.Footnote))
-
-var frontMatter = []byte("+++")
 
 var templates *template.Template
 
@@ -48,25 +37,25 @@ type Site struct {
 
 type Page struct {
 	// Title of this page
-	Title         string
+	Title string
 
 	// Template this page uses for rendering. Defaults to "default.html".
-	Template      string
+	Template string
 
 	// Time this page was published (parsed from file name).
 	DatePublished time.Time
 
 	// Time this page was last modified (from filesystem).
-	DateModified  time.Time
+	DateModified time.Time
 
 	// The full URL to this page (incl. site URL)
-	Permalink     string
+	Permalink string
 
 	// URL path for this page, relative to site URL
-	UrlPath       string
+	UrlPath string
 
 	// Path to source file for this page, relative to content root
-	Filepath      string
+	Filepath string
 }
 
 // parseFilename parses the URL path and optional date component from the given file path
@@ -74,6 +63,7 @@ func parseFilename(path string, rootDir string) (string, time.Time) {
 	path = filepath.ToSlash(path)
 	path = strings.TrimPrefix(path, rootDir+"content/")
 	path = strings.TrimSuffix(path, ".md")
+	path = strings.TrimSuffix(path, ".dj")
 	path = strings.TrimSuffix(path, ".html")
 	path = strings.TrimSuffix(path, "index")
 
@@ -136,17 +126,23 @@ func (p *Page) ParseContent() (string, error) {
 		}
 	}
 
-	// If source file has HTML extension, return content directly
-	if strings.HasSuffix(p.Filepath, ".html") {
+	switch filepath.Ext(p.Filepath) {
+	default:
+		fmt.Printf("Unknown file type %q (%q)\n", p.Filepath, filepath.Ext(p.Filepath))
+	case ".md":
+		var buf2 strings.Builder
+		fmt.Printf("processing %q\n", p.Filepath)
+		if err := md.Convert(fileContent, &buf2); err != nil {
+			return "", err
+		}
+		return buf2.String(), nil
+	case ".dj":
+		return ConvertDjot(fileContent), nil
+	case ".html":
 		return string(fileContent), nil
 	}
+	return "", fmt.Errorf("unexpected error")
 
-	// Otherwise, parse as Markdown
-	var buf2 strings.Builder
-	if err := md.Convert(fileContent, &buf2); err != nil {
-		return "", err
-	}
-	return buf2.String(), nil
 }
 
 func (s *Site) buildPage(p *Page) error {
@@ -172,11 +168,11 @@ func (s *Site) buildPage(p *Page) error {
 	}
 
 	return tmpl.Execute(fh, map[string]any{
-		"Page":    p,
-		"Posts":   s.posts,
-		"Pages":   s.pages,
+		"Page":  p,
+		"Posts": s.posts,
+		"Pages": s.pages,
 		"Site": map[string]string{
-			"Url": s.SiteUrl,
+			"Url":   s.SiteUrl,
 			"Title": s.Title,
 		},
 
@@ -349,7 +345,7 @@ func (s *Site) createRSSFeed() error {
 		Channel: Channel{
 			Title:         s.Title,
 			Link:          s.SiteUrl,
-            Generator:     "Gozer",
+			Generator:     "Gozer",
 			LastBuildDate: time.Now().Format(time.RFC1123Z),
 			Items:         items,
 		},
@@ -398,15 +394,15 @@ func parseConfig(s *Site, file string) error {
 func main() {
 	configFile := "config.toml"
 	rootPath := ""
-    showHelp := false
+	showHelp := false
 
 	// parse flags
 	flag.StringVar(&configFile, "config", configFile, "")
 	flag.StringVar(&configFile, "c", configFile, "")
 	flag.StringVar(&rootPath, "root", rootPath, "")
 	flag.StringVar(&rootPath, "r", rootPath, "")
-    flag.BoolVar(&showHelp, "help", showHelp, "")
-    flag.BoolVar(&showHelp, "h", showHelp, "")
+	flag.BoolVar(&showHelp, "help", showHelp, "")
+	flag.BoolVar(&showHelp, "h", showHelp, "")
 	flag.Parse()
 
 	command := os.Args[len(os.Args)-1]
@@ -466,6 +462,8 @@ func createDirectoryStructure(rootPath string) error {
 		{"config.toml", []byte("url = \"http://localhost:8080\"\ntitle = \"My website\"\n")},
 		{"templates/default.html", []byte("<!DOCTYPE html>\n<head>\n\t<title>{{ .Title }}</title>\n</head>\n<body>\n{{ .Content }}\n</body>\n</html>")},
 		{"content/index.md", []byte("+++\ntitle = \"Gozer!\"\n+++\n\nWelcome to my website.\n")},
+		// TODO djot does not (yet) support front matter, and godjot does not parse it. Once the front-matter syntax is settled, this should change. +djot +frontmatter
+		{"content/index.dj", []byte("+++\ntitle = \"Gozer!\"\n+++\n\nWelcome to my website.\n")},
 	}
 	for _, f := range files {
 		if err := os.WriteFile(filepath.Join(rootPath, f.Name), f.Content, 0655); err != nil {

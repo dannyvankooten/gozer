@@ -2,7 +2,7 @@
 
 Gozer is a fast & simple static site generator written in Golang.
 
-- Converts Markdown to HTML.
+- Converts Markdown and [djot](https://www.djot.net) to HTML.
 - Allows you to use page-specific templates.
 - Creates an XML sitemap for search engines.
 - Creates an RSS feed for feed readers.
@@ -65,7 +65,7 @@ Options:
 
 ## Content files
 
-Each file in your `content/` directory should end in `.md` and have TOML front matter specifying the page title:
+Each file in your `content/` directory should end in `.md` or `.dj` and have TOML front matter specifying the page title:
 
 ```md
 +++
@@ -74,6 +74,8 @@ title = "My page title"
 
 Page content here.
 ```
+
+**djot note** djot has not settled on a syntax for front matter. Until [issue #35](https://github.com/jgm/djot/issues/35) is resolved, TOML front matter in djot documents are used.
 
 ### Templates
 The default template for every page is `default.html`. You can override it by setting the `template` variable in your front matter.
