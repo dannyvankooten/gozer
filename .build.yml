@@ -2,7 +2,11 @@ image: alpine/edge
 packages:
   - go
 secrets:
-  - f81fca6d-0276-4087-af74-711044e181fa
+  - a40eedbe-ea5a-474b-9971-cdcd9ff369e1
+sources:
+  - git@git.sr.ht:~dvko/gozer
+environment:
+  GIT_SSH_COMMAND: ssh -o StrictHostKeyChecking=no
 tasks:
   - setup: |
       cd gozer
@@ -15,5 +19,4 @@ tasks:
       go test
   - github_mirror: |
       cd gozer
-      git config --global credential.helper store
-      git push https://github.com/dannyvankooten/gozer.git --mirror
+      git push git@github.com:dannyvankooten/gozer.git --mirror
