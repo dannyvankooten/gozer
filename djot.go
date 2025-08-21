@@ -1,8 +1,8 @@
 package main
 
 import (
-	"github.com/sivukhin/godjot/v2/djot_html"
-	"github.com/sivukhin/godjot/v2/djot_parser"
+	"git.sr.ht/~ser/godjot/v2/djot_html"
+	"git.sr.ht/~ser/godjot/v2/djot_parser"
 )
 
 func ConvertDjot(content []byte) string {
