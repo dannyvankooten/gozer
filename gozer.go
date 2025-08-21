@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -27,8 +28,8 @@ var sitemapXSL []byte
 var now = time.Now()
 
 type Site struct {
-	pages []Page
-	posts []Page
+	Pages []Page
+	Posts []Page
 
 	Title   string `toml:"title"`
 	SiteUrl string `toml:"url"`
@@ -56,6 +57,12 @@ type Page struct {
 
 	// Path to source file for this page, relative to content root
 	Filepath string
+
+	// Whether the page should be published or not
+	Draft bool `toml:"draft"`
+
+	// A list of tags associated with the page
+	Tags []string `toml:"tags"`
 }
 
 // parseFilename parses the URL path and optional date component from the given file path
@@ -167,14 +174,31 @@ func (s *Site) buildPage(p *Page) error {
 		return fmt.Errorf("invalid template name: %s", p.Template)
 	}
 
+	var prev, next *Page
+	for i, post := range s.Posts {
+		if &post == p {
+			if i > 0 {
+				prev = &s.Posts[i-1]
+			}
+			if i < len(s.Posts)-1 {
+				next = &s.Posts[i+1]
+			}
+		}
+	}
+
 	return tmpl.Execute(fh, map[string]any{
 		"Page":  p,
-		"Posts": s.posts,
-		"Pages": s.pages,
+		"Posts": s.Posts,
+		"Pages": s.Pages,
 		"Site": map[string]string{
 			"Url":   s.SiteUrl,
 			"Title": s.Title,
 		},
+
+		// If the page is a post, it may have a next and previous post
+		// These may also be nil
+		"Prev": prev,
+		"Next": next,
 
 		// Shorthand for accessing through .Page.Title / .Page.Content
 		"Title":   p.Title,
@@ -206,14 +230,14 @@ func (s *Site) AddPageFromFile(file string) error {
 	}
 
 	if err := parseFrontMatter(&p); err != nil {
-		return err
+		return fmt.Errorf("%s: %s", file, err)
 	}
 
-	s.pages = append(s.pages, p)
+	s.Pages = append(s.Pages, p)
 
 	// every page with a date is assumed to be a blog post
 	if !p.DatePublished.IsZero() {
-		s.posts = append(s.posts, p)
+		s.Posts = append(s.Posts, p)
 	}
 
 	return nil
@@ -229,8 +253,8 @@ func (s *Site) readContent(dir string) error {
 	})
 
 	// sort posts by date
-	sort.Slice(s.posts, func(i int, j int) bool {
-		return s.posts[i].DatePublished.After(s.posts[j].DatePublished)
+	sort.Slice(s.Posts, func(i int, j int) bool {
+		return s.Posts[i].DatePublished.After(s.Posts[j].DatePublished)
 	})
 
 	return err
@@ -252,8 +276,8 @@ func (s *Site) createSitemap() error {
 		Urls           []Url    `xml:""`
 	}
 
-	urls := make([]Url, 0, len(s.pages))
-	for _, p := range s.pages {
+	urls := make([]Url, 0, len(s.Pages))
+	for _, p := range s.Pages {
 		urls = append(urls, Url{
 			Loc:     p.Permalink,
 			LastMod: p.DateModified.Format(time.RFC3339),
@@ -317,13 +341,13 @@ func (s *Site) createRSSFeed() error {
 	}
 
 	// add 10 most recent posts to feed
-	n := len(s.posts)
+	n := len(s.Posts)
 	if n > 10 {
 		n = 10
 	}
 
 	items := make([]Item, 0, n)
-	for _, p := range s.posts[0:n] {
+	for _, p := range s.Posts[0:n] {
 		pageContent, err := p.ParseContent()
 		if err != nil {
 			log.Warn("error parsing content of %s: %s", p.Filepath, err)
@@ -474,11 +498,48 @@ func createDirectoryStructure(rootPath string) error {
 	return nil
 }
 
+type PageGroup struct {
+	Key   string
+	Pages []Page
+}
+
 func buildSite(rootPath string, configFile string) {
 	var err error
 	timeStart := time.Now()
 
-	templates, err = template.ParseGlob(filepath.Join(rootPath, "templates/*.html"))
+	temp := template.New("gozer").Funcs(template.FuncMap{
+		"HasPrefix": strings.HasPrefix,
+		"HasSuffix": strings.HasSuffix,
+		"Contains":  strings.Contains,
+		// GroupByDate groups pages in the list by the Time spec, e.g. "2006",
+		// "January", in reverse order
+		"GroupByDate": func(pages []Page, date string) []PageGroup {
+			groups := make(map[string][]Page)
+			keys := make([]string, 0)
+			for _, page := range pages {
+				key := page.DateModified.Format(date)
+				if groups[key] == nil {
+					keys = append(keys, key)
+					groups[key] = []Page{page}
+				} else {
+					groups[key] = append(groups[key], page)
+				}
+			}
+			sort.Strings(keys)
+			slices.Reverse(keys)
+			rv := make([]PageGroup, len(keys))
+			for i, key := range keys {
+				pgs := groups[key]
+				slices.Reverse(pgs)
+				rv[i] = PageGroup{
+					Key:   key,
+					Pages: groups[key],
+				}
+			}
+			return rv
+		},
+	})
+	templates, err = temp.ParseGlob(filepath.Join(rootPath, "templates/*.html"))
 	if err != nil {
 		log.Fatal("Error reading templates/ directory: %s", err)
 	}
@@ -500,7 +561,7 @@ func buildSite(rootPath string, configFile string) {
 	var wg sync.WaitGroup
 
 	// build each individual page
-	for _, p := range site.pages {
+	for _, p := range site.Pages {
 		wg.Add(1)
 
 		go func(p Page) {
@@ -529,5 +590,5 @@ func buildSite(rootPath string, configFile string) {
 		log.Fatal("Error copying public/ directory: %s", err)
 	}
 
-	log.Info("Built %d pages in %d ms\n", len(site.pages), time.Since(timeStart).Milliseconds())
+	log.Info("Built %d pages in %d ms\n", len(site.Pages), time.Since(timeStart).Milliseconds())
 }

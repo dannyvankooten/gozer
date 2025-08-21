@@ -15,3 +15,5 @@ require (
 	github.com/sivukhin/godjot/v2 v2.0.1-0.20250612185934-f0b56981998c // indirect
 	golang.org/x/sys v0.4.0 // indirect
 )
+
+replace github.com/sivukhin/godjot/v2 => ../godjot
