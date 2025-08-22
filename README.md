@@ -56,6 +56,7 @@ Usage: gozer [OPTIONS] <COMMAND>
 Commands:
     build   Deletes the output directory if there is one and builds the site
     serve   Builds the site and starts an HTTP server on http://localhost:8080
+    watch   Builds the site and watches for file changes
     new     Creates a new site structure in the given directory
 
 Options:

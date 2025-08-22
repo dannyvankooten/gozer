@@ -10,6 +10,7 @@ import (
 	"io/fs"
 	"net/http"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"slices"
 	"sort"
@@ -432,7 +433,7 @@ func main() {
 	flag.Parse()
 
 	command := os.Args[len(os.Args)-1]
-	if showHelp || (command != "build" && command != "serve" && command != "new") {
+	if showHelp || (command != "build" && command != "serve" && command != "new" && command != "watch") {
 		fmt.Printf(`Gozer - a fast & simple static site generator
 
 Usage: gozer [OPTIONS] <COMMAND>
@@ -440,6 +441,7 @@ Usage: gozer [OPTIONS] <COMMAND>
 Commands:
 	build	Deletes the output directory if there is one and builds the site
 	serve	Builds the site and starts an HTTP server on http://localhost:8080
+	watch   Builds the site and watches for file changes
 	new     Creates a new site structure in the given directory
 
 Options:
@@ -460,19 +462,37 @@ Options:
 
 	buildSite(rootPath, configFile)
 
-	if command == "serve" {
+	if command == "serve" || command == "watch" {
+		// safety is to make sure we don't let the user ^C exit while we're in the middle of rebuilding
+		// a site. This only affects "watch", as ListenAndServe does its own ^C handling.
+		safety := sync.Mutex{}
 		// setup fsnotify watcher
 		go watchDirs([]string{
 			filepath.Join(rootPath, "content"),
 			filepath.Join(rootPath, "public"),
 			filepath.Join(rootPath, "templates"),
 		}, func() {
+			// prevent ^C during a build
+			safety.Lock()
 			buildSite(rootPath, configFile)
+			safety.Unlock()
 		})
 
-		// serve site
-		log.Info("Listening on %s\n", listen)
-		_ = http.ListenAndServe(listen, http.FileServer(http.Dir("build")))
+		if command == "serve" {
+			log.Info("Listening on http://localhost:8080\n")
+			_ = http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build")))
+		} else {
+			ch := make(chan os.Signal, 1)
+			signal.Notify(ch, os.Interrupt)
+			log.Info("Watching for changes (Ctrl-C to exit)\n")
+			for range ch {
+				log.Info("User inturrupt... ")
+				// wait for any current site builds to finish...
+				safety.Lock()
+				log.Info("Exiting\n")
+				os.Exit(0)
+			}
+		}
 	}
 }
 
