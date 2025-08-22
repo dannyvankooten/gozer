@@ -419,6 +419,7 @@ func main() {
 	configFile := "config.toml"
 	rootPath := ""
 	showHelp := false
+	listen := "localhost:8080"
 
 	// parse flags
 	flag.StringVar(&configFile, "config", configFile, "")
@@ -427,6 +428,7 @@ func main() {
 	flag.StringVar(&rootPath, "r", rootPath, "")
 	flag.BoolVar(&showHelp, "help", showHelp, "")
 	flag.BoolVar(&showHelp, "h", showHelp, "")
+	flag.StringVar(&listen, "listen", "localhost:8080", "")
 	flag.Parse()
 
 	command := os.Args[len(os.Args)-1]
@@ -443,6 +445,8 @@ Commands:
 Options:
 	-r, --root <ROOT> Directory to use as root of project (default: .)
 	-c, --config <CONFIG> Path to configuration file (default: config.toml)
+	    --listen <INTERFACE:PORT> Interface to liston on; only used with 'serve',
+	             'INTERFACE' is optional. e.g. '--listen :9000'
 `)
 		return
 	}
@@ -467,8 +471,8 @@ Options:
 		})
 
 		// serve site
-		log.Info("Listening on http://localhost:8080\n")
-		_ = http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build")))
+		log.Info("Listening on %s\n", listen)
+		_ = http.ListenAndServe(listen, http.FileServer(http.Dir("build")))
 	}
 }
 

@@ -61,6 +61,9 @@ Commands:
 Options:
     -r, --root <ROOT> Directory to use as root of project (default: .)
     -c, --config <CONFIG> Path to configuration file (default: config.toml)
+        --listen <INTERFACE:PORT> Interface to liston on; only used with 'serve',
+                 'INTERFACE' is optional. e.g. '--listen :9000'
+
 ```
 
 ## Content files
