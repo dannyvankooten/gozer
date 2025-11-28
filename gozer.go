@@ -511,6 +511,7 @@ func buildSite(rootPath string, configFile string) {
 		"HasPrefix": strings.HasPrefix,
 		"HasSuffix": strings.HasSuffix,
 		"Contains":  strings.Contains,
+		"Replace":  strings.Replace,
 		// GroupByDate groups pages in the list by the Time spec, e.g. "2006",
 		// "January", in reverse order
 		"GroupByDate": func(pages []Page, date string) []PageGroup {
