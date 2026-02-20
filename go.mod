@@ -1,4 +1,4 @@
-module git.sr.ht/~dvko/gozer
+module github.com/dannyvankooten/gozer
 
 go 1.23
 
