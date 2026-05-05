@@ -242,6 +242,11 @@ func (s *Site) AddPageFromFile(file string) error {
 		return fmt.Errorf("%s: %s", file, err)
 	}
 
+	// Default to site title
+	if p.Title == "" {
+		p.Title = s.Title
+	}
+
 	s.Pages = append(s.Pages, p)
 
 	// every page with a date is assumed to be a blog post
@@ -553,7 +558,7 @@ func buildSite(rootPath string, configFile string) {
 			groups := make(map[string][]Page)
 			keys := make([]string, 0)
 			for _, page := range pages {
-				key := page.DateModified.Format(date)
+				key := page.DatePublished.Format(date)
 				if groups[key] == nil {
 					keys = append(keys, key)
 					groups[key] = []Page{page}
