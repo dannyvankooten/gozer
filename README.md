@@ -155,6 +155,7 @@ Options in `config.toml`:
 [[feeds]]
 title = "Blog"
 path = "content/"
+filename = "myfeed.xml" # optional
 length = 10 # 0 = no limit
 ```
 

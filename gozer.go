@@ -32,7 +32,7 @@ type Site struct {
 	Pages []Page
 	Posts []Page
 
-	Feeds []Feed `toml:"feeds"`
+	Feeds []FeedDef `toml:"feeds"`
 
 	Title   string `toml:"title"`
 	SiteUrl string `toml:"url"`
@@ -68,9 +68,10 @@ type Page struct {
 	Tags []string `toml:"tags"`
 }
 
-type Feed struct {
+type FeedDef struct {
 	Title string `toml:"title"`
 	Path string `toml:"path"`
+	Filename string `toml:"filename,omitempty"`
 	Length int `toml:"length"`
 }
 
@@ -329,7 +330,7 @@ func (s *Site) createSitemap() error {
 	return nil
 }
 
-func (s *Site) createRSSFeed(name string, feedPrefix string, length int) error {
+func (s *Site) createRSSFeed(feedDef FeedDef) error {
 	type Item struct {
 		Title       string `xml:"title"`
 		Link        string `xml:"link"`
@@ -356,13 +357,13 @@ func (s *Site) createRSSFeed(name string, feedPrefix string, length int) error {
 
 	// add 10 most recent posts to feed
 	n := len(s.Posts)
-	if length > 0 && n > length {
-		n = length
+	if feedDef.Length > 0 && n > feedDef.Length {
+		n = feedDef.Length
 	}
 
 	items := make([]Item, 0, n)
 	for _, p := range s.Posts[0:n] {
-		if !strings.HasPrefix(p.Filepath, feedPrefix) {
+		if !strings.HasPrefix(p.Filepath, feedDef.Path) {
 			continue
 		}
 		pageContent, err := p.ParseContent()
@@ -392,7 +393,7 @@ func (s *Site) createRSSFeed(name string, feedPrefix string, length int) error {
 		},
 	}
 
-	rssFeedFilename := filepath.Join("build", name + ".xml")
+	rssFeedFilename := filepath.Join("build", feedDef.Filename)
 	wr, err := os.Create(rssFeedFilename)
 	if err != nil {
 		return err
@@ -427,6 +428,30 @@ func parseConfig(s *Site, file string) error {
 	// ensure site url has trailing slash
 	if !strings.HasSuffix(s.SiteUrl, "/") {
 		s.SiteUrl += "/"
+	}
+
+	pathCleaner := strings.NewReplacer(
+		"\"", "",
+		"\\", "",
+		"/", "",
+		"?", "",
+		":", "",
+		"*", "",
+		"<", "",
+		">", "",
+		"|", "",
+		" ", "-",
+	)
+
+	// Assign filenames to feeds
+	for i := range s.Feeds {
+		fmt.Printf("A:%s:B\n", s.Feeds[i].Filename);
+		if s.Feeds[i].Filename == "" {
+			s.Feeds[i].Filename = strings.ToLower(pathCleaner.Replace(s.Feeds[i].Title))
+		}
+		if !strings.HasSuffix(s.Feeds[i].Filename, ".xml") {
+			s.Feeds[i].Filename += ".xml"
+		}
 	}
 
 	return nil
@@ -630,7 +655,7 @@ func buildSite(rootPath string, configFile string) {
 
 	// create RSS feeds
 	for _, feed := range site.Feeds {
-		if err := site.createRSSFeed(feed.Title, feed.Path, feed.Length); err != nil {
+		if err := site.createRSSFeed(feed); err != nil {
 			log.Warn("Error creating RSS feed: %s\n", err)
 		}
 	}
