@@ -144,13 +144,13 @@ To show a list of the 5 most recent posts:
 
 ## Config
 
-`config.toml`
+Options in `config.toml`:
 
-`url`: Website base URL  
-`title`: Website title
+`url`: Website base URL
 
-`feeds`:
+`title`: Website title (used if no page title given)
 
+`feeds`:  
 ```
 [[feeds]]
 title = "Blog"
@@ -160,8 +160,31 @@ length = 10 # 0 = no limit
 
 ## Functions
 
-`HasPrefix` - `HasPrefix *string* *prefix*`  
+`HasPrefix`: `HasPrefix *string* *prefix*`
 
+`HasSuffix`: `HasSuffix *string* *suffix*`
+
+`Contains`: `Contains *string* *sub_string*`
+
+`Replace`: `Replace *string* *target* *replacement* *number*` (`-1` for all)
+
+`GroupByDate`: `GroupByDate .Pages *date_string*` Example:  
+```
+{{ range GroupByDate .Pages "2006" }}
+	<h1>{{ .Key }}</h1>
+	{{ range .Pages }}
+		<h4>{{ .Title }}</h4>
+	{{ end }}
+{{ end }}
+```
+
+`Content`: `Content .` Example:  
+```
+{{ range .Pages }}
+	<h3>{{ .Title }}</h3>
+	{{ Content . }}
+{{ end }}
+```
 
 ## Contributing
 
