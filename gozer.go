@@ -583,7 +583,7 @@ func buildSite(rootPath string, configFile string) {
 			groups := make(map[string][]Page)
 			keys := make([]string, 0)
 			for _, page := range pages {
-				key := page.DatePublished.Format(date)
+				key := page.DateModified.Format(date)
 				if groups[key] == nil {
 					keys = append(keys, key)
 					groups[key] = []Page{page}
