@@ -32,6 +32,8 @@ type Site struct {
 	Pages []Page
 	Posts []Page
 
+	Feeds []Feed `toml:"feeds"`
+
 	Title   string `toml:"title"`
 	SiteUrl string `toml:"url"`
 	RootDir string
@@ -64,6 +66,12 @@ type Page struct {
 
 	// A list of tags associated with the page
 	Tags []string `toml:"tags"`
+}
+
+type Feed struct {
+	Title string `toml:"title"`
+	Path string `toml:"path"`
+	Length int `toml:"length"`
 }
 
 // parseFilename parses the URL path and optional date component from the given file path
@@ -316,7 +324,7 @@ func (s *Site) createSitemap() error {
 	return nil
 }
 
-func (s *Site) createRSSFeed() error {
+func (s *Site) createRSSFeed(name string, feedPrefix string, length int) error {
 	type Item struct {
 		Title       string `xml:"title"`
 		Link        string `xml:"link"`
@@ -343,12 +351,15 @@ func (s *Site) createRSSFeed() error {
 
 	// add 10 most recent posts to feed
 	n := len(s.Posts)
-	if n > 10 {
-		n = 10
+	if length > 0 && n > length {
+		n = length
 	}
 
 	items := make([]Item, 0, n)
 	for _, p := range s.Posts[0:n] {
+		if !strings.HasPrefix(p.Filepath, feedPrefix) {
+			continue
+		}
 		pageContent, err := p.ParseContent()
 		if err != nil {
 			log.Warn("error parsing content of %s: %s", p.Filepath, err)
@@ -376,7 +387,7 @@ func (s *Site) createRSSFeed() error {
 		},
 	}
 
-	rssFeedFilename := filepath.Join("build", "feed.xml")
+	rssFeedFilename := filepath.Join("build", name + ".xml")
 	wr, err := os.Create(rssFeedFilename)
 	if err != nil {
 		return err
@@ -563,6 +574,13 @@ func buildSite(rootPath string, configFile string) {
 			}
 			return rv
 		},
+		"Content": func(p Page) template.HTML {
+			content, err := p.ParseContent()
+			if (err != nil) {
+				return ""
+			}
+			return template.HTML(content)
+		},
 	})
 	templates, err = temp.ParseGlob(filepath.Join(rootPath, "templates/*.html"))
 	if err != nil {
@@ -605,9 +623,11 @@ func buildSite(rootPath string, configFile string) {
 		log.Warn("Error creating sitemap: %s\n", err)
 	}
 
-	// create RSS feed
-	if err := site.createRSSFeed(); err != nil {
-		log.Warn("Error creating RSS feed: %s\n", err)
+	// create RSS feeds
+	for _, feed := range site.Feeds {
+		if err := site.createRSSFeed(feed.Title, feed.Path, feed.Length); err != nil {
+			log.Warn("Error creating RSS feed: %s\n", err)
+		}
 	}
 
 	// static files

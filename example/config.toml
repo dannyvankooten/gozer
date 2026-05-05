@@ -1,2 +1,7 @@
 url = "http://localhost:8080"
 title = "My website"
+
+[[feeds]]
+title = "blog"
+path = "content/"
+length = 10
