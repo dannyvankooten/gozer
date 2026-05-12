@@ -47,7 +47,7 @@ type Page struct {
 	Template string
 
 	// Time this page was published (parsed from file name).
-	DatePublished time.Time
+	DatePublished time.Time `toml:"datepublished"`
 
 	// Time this page was last modified (from filesystem).
 	DateModified time.Time
