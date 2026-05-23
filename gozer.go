@@ -447,8 +447,8 @@ Commands:
 Options:
 	-r, --root <ROOT> Directory to use as root of project (default: .)
 	-c, --config <CONFIG> Path to configuration file (default: config.toml)
-	    --listen <INTERFACE:PORT> Interface to liston on; only used with 'serve',
-	             'INTERFACE' is optional. e.g. '--listen :9000'
+	    --listen <INTERFACE:PORT> Interface to listen on; only used with 'serve',
+	             'INTERFACE' is optional. e.g. '--listen :9000 serve'
 `)
 		return
 	}
@@ -479,8 +479,11 @@ Options:
 		})
 
 		if command == "serve" {
-			log.Info("Listening on http://localhost:8080\n")
-			_ = http.ListenAndServe("localhost:8080", http.FileServer(http.Dir("build")))
+			log.Info("Listening on http://" + listen + "\n")
+			err := http.ListenAndServe(listen, http.FileServer(http.Dir("build")))
+			if err != nil {
+				log.Fatal("Error serving site: %s", err)
+			}
 		} else {
 			ch := make(chan os.Signal, 1)
 			signal.Notify(ch, os.Interrupt)
