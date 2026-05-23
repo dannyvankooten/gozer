@@ -1,2 +1,8 @@
 url = "http://localhost:8080"
 title = "My website"
+
+[[feeds]]
+title = "blog"
+path = "content/"
+filename = "my-feed.xml"
+length = 10

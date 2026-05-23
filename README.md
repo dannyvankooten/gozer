@@ -99,7 +99,7 @@ Every template receives the following set of variables:
 
 ```
 Pages       # Slice of all pages in the site
-Posts       # Slice of all posts in the site (any page with a date in the filename)
+Posts       # Slice of all posts in the site (any page with a date in the filename or front matter)
 Site        # Global site properties: Url, Title
 Page        # The current page: Title, Permalink, UrlPath, DatePublished, DateModified
 Title       # The current page title, shorthand for Page.Title
@@ -139,6 +139,51 @@ To show a list of the 5 most recent posts:
 ```gotemplate
 {{ range (slice .Posts 0 5) }}
     <a href="{{ .Permalink }}">{{ .Title }}</a> <small>{{ .DatePublished.Format "Jan 02, 2006" }}</small><br />
+{{ end }}
+```
+
+## Config
+
+Options in `config.toml`:
+
+`url`: Website base URL
+
+`title`: Website title (used if no page title given)
+
+`feeds`:  
+```
+[[feeds]]
+title = "Blog"
+path = "content/"
+filename = "myfeed.xml" # optional
+length = 10 # 0 = no limit
+```
+
+## Functions
+
+`HasPrefix`: `HasPrefix *string* *prefix*`
+
+`HasSuffix`: `HasSuffix *string* *suffix*`
+
+`Contains`: `Contains *string* *sub_string*`
+
+`Replace`: `Replace *string* *target* *replacement* *number*` (`-1` for all)
+
+`GroupByDate`: `GroupByDate .Pages *date_string*` Example:  
+```
+{{ range GroupByDate .Pages "2006" }}
+	<h1>{{ .Key }}</h1>
+	{{ range .Pages }}
+		<h4>{{ .Title }}</h4>
+	{{ end }}
+{{ end }}
+```
+
+`Content`: `Content .` Example:  
+```
+{{ range .Pages }}
+	<h3>{{ .Title }}</h3>
+	{{ Content . }}
 {{ end }}
 ```
 

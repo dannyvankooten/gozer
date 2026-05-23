@@ -32,6 +32,8 @@ type Site struct {
 	Pages []Page
 	Posts []Page
 
+	Feeds []FeedDef `toml:"feeds"`
+
 	Title   string `toml:"title"`
 	SiteUrl string `toml:"url"`
 	RootDir string
@@ -45,7 +47,7 @@ type Page struct {
 	Template string
 
 	// Time this page was published (parsed from file name).
-	DatePublished time.Time
+	DatePublished time.Time `toml:"datepublished"`
 
 	// Time this page was last modified (from filesystem).
 	DateModified time.Time
@@ -64,6 +66,13 @@ type Page struct {
 
 	// A list of tags associated with the page
 	Tags []string `toml:"tags"`
+}
+
+type FeedDef struct {
+	Title string `toml:"title"`
+	Path string `toml:"path"`
+	Filename string `toml:"filename,omitempty"`
+	Length int `toml:"length"`
 }
 
 // parseFilename parses the URL path and optional date component from the given file path
@@ -234,6 +243,11 @@ func (s *Site) AddPageFromFile(file string) error {
 		return fmt.Errorf("%s: %s", file, err)
 	}
 
+	// Default to site title
+	if p.Title == "" {
+		p.Title = s.Title
+	}
+
 	s.Pages = append(s.Pages, p)
 
 	// every page with a date is assumed to be a blog post
@@ -316,7 +330,7 @@ func (s *Site) createSitemap() error {
 	return nil
 }
 
-func (s *Site) createRSSFeed() error {
+func (s *Site) createRSSFeed(feedDef FeedDef) error {
 	type Item struct {
 		Title       string `xml:"title"`
 		Link        string `xml:"link"`
@@ -343,12 +357,15 @@ func (s *Site) createRSSFeed() error {
 
 	// add 10 most recent posts to feed
 	n := len(s.Posts)
-	if n > 10 {
-		n = 10
+	if feedDef.Length > 0 && n > feedDef.Length {
+		n = feedDef.Length
 	}
 
 	items := make([]Item, 0, n)
 	for _, p := range s.Posts[0:n] {
+		if !strings.HasPrefix(p.Filepath, feedDef.Path) {
+			continue
+		}
 		pageContent, err := p.ParseContent()
 		if err != nil {
 			log.Warn("error parsing content of %s: %s", p.Filepath, err)
@@ -376,7 +393,7 @@ func (s *Site) createRSSFeed() error {
 		},
 	}
 
-	rssFeedFilename := filepath.Join("build", "feed.xml")
+	rssFeedFilename := filepath.Join("build", feedDef.Filename)
 	wr, err := os.Create(rssFeedFilename)
 	if err != nil {
 		return err
@@ -411,6 +428,30 @@ func parseConfig(s *Site, file string) error {
 	// ensure site url has trailing slash
 	if !strings.HasSuffix(s.SiteUrl, "/") {
 		s.SiteUrl += "/"
+	}
+
+	pathCleaner := strings.NewReplacer(
+		"\"", "",
+		"\\", "",
+		"/", "",
+		"?", "",
+		":", "",
+		"*", "",
+		"<", "",
+		">", "",
+		"|", "",
+		" ", "-",
+	)
+
+	// Assign filenames to feeds
+	for i := range s.Feeds {
+		fmt.Printf("A:%s:B\n", s.Feeds[i].Filename);
+		if s.Feeds[i].Filename == "" {
+			s.Feeds[i].Filename = strings.ToLower(pathCleaner.Replace(s.Feeds[i].Title))
+		}
+		if !strings.HasSuffix(s.Feeds[i].Filename, ".xml") {
+			s.Feeds[i].Filename += ".xml"
+		}
 	}
 
 	return nil
@@ -566,6 +607,13 @@ func buildSite(rootPath string, configFile string) {
 			}
 			return rv
 		},
+		"Content": func(p Page) template.HTML {
+			content, err := p.ParseContent()
+			if (err != nil) {
+				return ""
+			}
+			return template.HTML(content)
+		},
 	})
 	templates, err = temp.ParseGlob(filepath.Join(rootPath, "templates/*.html"))
 	if err != nil {
@@ -608,9 +656,11 @@ func buildSite(rootPath string, configFile string) {
 		log.Warn("Error creating sitemap: %s\n", err)
 	}
 
-	// create RSS feed
-	if err := site.createRSSFeed(); err != nil {
-		log.Warn("Error creating RSS feed: %s\n", err)
+	// create RSS feeds
+	for _, feed := range site.Feeds {
+		if err := site.createRSSFeed(feed); err != nil {
+			log.Warn("Error creating RSS feed: %s\n", err)
+		}
 	}
 
 	// static files
