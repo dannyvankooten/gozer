@@ -35,6 +35,11 @@ type Site struct {
 	Title   string `toml:"title"`
 	SiteUrl string `toml:"url"`
 	RootDir string
+
+	Meta map[string]any `toml:"-"`
+
+	// Deprecated: use Meta.
+	Attrs map[string]any `toml:"-"`
 }
 
 type Page struct {
@@ -59,11 +64,10 @@ type Page struct {
 	// Path to source file for this page, relative to content root
 	Filepath string
 
-	// Whether the page should be published or not
-	Draft bool `toml:"draft"`
+	Meta map[string]any `toml:"-"`
 
-	// A list of tags associated with the page
-	Tags []string `toml:"tags"`
+	// Deprecated: use Meta.
+	Attrs map[string]any `toml:"-"`
 }
 
 // parseFilename parses the URL path and optional date component from the given file path
@@ -117,7 +121,16 @@ func parseFrontMatter(p *Page) error {
 		return fmt.Errorf("missing closing front-matter identifier in %s", p.Filepath)
 	}
 
-	return toml.Unmarshal(buf[:pos], p)
+	meta := make(map[string]any)
+	if err := toml.Unmarshal(buf[:pos], p); err != nil {
+		return err
+	}
+	if err := toml.Unmarshal(buf[:pos], &meta); err != nil {
+		return err
+	}
+	p.Meta = meta
+	p.Attrs = p.Meta
+	return nil
 }
 
 func (p *Page) ParseContent() (string, error) {
@@ -195,6 +208,8 @@ func (s *Site) buildPage(p *Page) error {
 			"Url":   s.SiteUrl,
 			"Title": s.Title,
 		},
+		"Meta":  s.Meta,
+		"Attrs": s.Meta,
 
 		// If the page is a post, it may have a next and previous post
 		// These may also be nil
@@ -408,6 +423,14 @@ func parseConfig(s *Site, file string) error {
 		return err
 	}
 
+	meta := make(map[string]any)
+	if _, err := toml.DecodeFile(file, &meta); err != nil {
+		return err
+	}
+
+	s.Meta = meta
+	s.Attrs = s.Meta
+
 	// ensure site url has trailing slash
 	if !strings.HasSuffix(s.SiteUrl, "/") {
 		s.SiteUrl += "/"
@@ -538,7 +561,7 @@ func buildSite(rootPath string, configFile string) {
 		"HasPrefix": strings.HasPrefix,
 		"HasSuffix": strings.HasSuffix,
 		"Contains":  strings.Contains,
-		"Replace":  strings.Replace,
+		"Replace":   strings.Replace,
 		// GroupByDate groups pages in the list by the Time spec, e.g. "2006",
 		// "January", in reverse order
 		"GroupByDate": func(pages []Page, date string) []PageGroup {

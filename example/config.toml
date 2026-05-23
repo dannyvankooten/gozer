@@ -1,2 +1,6 @@
 url = "http://localhost:8080"
 title = "My website"
+
+key1 = 1
+key2 = "two"
+# key3 = 20250822T11:08:00Z

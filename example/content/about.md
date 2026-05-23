@@ -1,5 +1,7 @@
 +++
 title = "About me"
+draft = true
+tags = ["about", "gozer"]
 +++
 
 Lorem ipsum:

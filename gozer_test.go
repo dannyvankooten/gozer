@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"os"
 	"testing"
 	"time"
@@ -17,10 +18,15 @@ func TestExampleSite(t *testing.T) {
 	}{
 		{"index.html", [][]byte{
 			[]byte("<p>Hey, welcome on my site!</p>"),
-			[]byte("<title>My site</title>")},
+			[]byte("<title>My site</title>"),
+			[]byte("<li>key1: 1</li>"),
+			[]byte("<li>key2: two</li>"),
+			[]byte("<li>title: My site</li>")},
 		},
 		{"about/index.html", [][]byte{
 			[]byte("<title>About me</title>"),
+			[]byte("<li>draft: true</li>"),
+			[]byte("<li>tags: [about gozer]</li>"),
 			[]byte("<li>Dolor</li>")},
 		},
 		{"hello-world/index.html", [][]byte{
@@ -69,6 +75,43 @@ func TestParseConfigFile(t *testing.T) {
 	}
 }
 
+func TestParseConfigMetaAndAttrsAlias(t *testing.T) {
+	s := Site{}
+	if err := parseConfig(&s, "example/config.toml"); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := s.Meta["key1"]; fmt.Sprint(got) != "1" {
+		t.Errorf("invalid site attr key1. expected %v, got %v", 1, got)
+	}
+
+	if got := s.Meta["key2"]; got != "two" {
+		t.Errorf("invalid site attr key2. expected %q, got %v", "two", got)
+	}
+
+	if got := s.Meta["title"]; got != "My website" {
+		t.Errorf("invalid site attr title. expected %q, got %v", "My website", got)
+	}
+
+	if got := s.Meta["url"]; got != "http://localhost:8080" {
+		t.Errorf("invalid site attr url. expected %q, got %v", "http://localhost:8080", got)
+	}
+
+	if got := s.Attrs["key1"]; fmt.Sprint(got) != "1" {
+		t.Errorf("invalid site alias attr key1. expected %v, got %v", 1, got)
+	}
+
+	s.Meta["alias"] = "yes"
+	if got := s.Attrs["alias"]; got != "yes" {
+		t.Errorf("expected attrs alias to reflect meta writes, got %v", got)
+	}
+
+	s.Attrs["alias2"] = "yes"
+	if got := s.Meta["alias2"]; got != "yes" {
+		t.Errorf("expected meta to reflect attrs alias writes, got %v", got)
+	}
+}
+
 func TestParseFrontMatter(t *testing.T) {
 	p := &Page{
 		Filepath: "example/content/index.md",
@@ -81,6 +124,14 @@ func TestParseFrontMatter(t *testing.T) {
 	expectedTitle := "My site"
 	if p.Title != expectedTitle {
 		t.Errorf("Invalid title. Expected %v, got %v", expectedTitle, p.Title)
+	}
+
+	if got := p.Meta["title"]; got != expectedTitle {
+		t.Errorf("Invalid front matter title attr. Expected %v, got %v", expectedTitle, got)
+	}
+
+	if got := p.Attrs["title"]; got != expectedTitle {
+		t.Errorf("Invalid front matter title alias attr. Expected %v, got %v", expectedTitle, got)
 	}
 }
 
@@ -96,6 +147,38 @@ func TestParseFrontMatterDjot(t *testing.T) {
 	expectedTitle := "Multiple markup support"
 	if p.Title != expectedTitle {
 		t.Errorf("Invalid title. Expected %v, got %v", expectedTitle, p.Title)
+	}
+}
+
+func TestParseFrontMatterMetaAndAttrsAlias(t *testing.T) {
+	p := &Page{
+		Filepath: "example/content/about.md",
+	}
+
+	if err := parseFrontMatter(p); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := p.Meta["draft"]; got != true {
+		t.Errorf("Invalid draft attr. Expected true, got %v", got)
+	}
+
+	if got := p.Meta["title"]; got != "About me" {
+		t.Errorf("Invalid title attr. Expected %q, got %v", "About me", got)
+	}
+
+	if got := fmt.Sprint(p.Meta["tags"]); got != "[about gozer]" {
+		t.Errorf("Invalid tags attr. Expected %q, got %v", "[about gozer]", got)
+	}
+
+	p.Meta["alias"] = "yes"
+	if got := p.Attrs["alias"]; got != "yes" {
+		t.Errorf("expected attrs alias to reflect meta writes, got %v", got)
+	}
+
+	p.Attrs["alias2"] = "yes"
+	if got := p.Meta["alias2"]; got != "yes" {
+		t.Errorf("expected meta to reflect attrs alias writes, got %v", got)
 	}
 }
 

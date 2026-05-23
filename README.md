@@ -7,11 +7,7 @@ Gozer is a fast & simple static site generator written in Golang.
 - Creates an XML sitemap for search engines.
 - Creates an RSS feed for feed readers.
 
-Sample websites using Gozer:
-
-- [Simplest possible example](example/)
-- My personal website: [site](https://www.dannyvankooten.com/) - [source](https://github.com/dannyvankooten/www.dannyvankooten.com)
-
+The [example](example/) directory contains a barebones example of a Gozer site.
 
 ## Installation
 
@@ -101,10 +97,21 @@ Every template receives the following set of variables:
 Pages       # Slice of all pages in the site
 Posts       # Slice of all posts in the site (any page with a date in the filename)
 Site        # Global site properties: Url, Title
-Page        # The current page: Title, Permalink, UrlPath, DatePublished, DateModified
+Meta        # All keys from config.toml (for example: title, url, custom fields)
+Page        # The current page: Title, Permalink, UrlPath, DatePublished, DateModified, Meta
 Title       # The current page title, shorthand for Page.Title
 Content     # The current page's HTML content.
 Now         # Timestamp of build, instance of time.Time
+```
+
+`Meta` contains all keys from your `config.toml`. Front matter keys are available on `Page.Meta`.
+
+```gotemplate
+<meta name="description" content="{{ index .Meta "description" }}">
+
+{{ if index .Page.Meta "draft" }}
+    <p>This page is still a draft.</p>
+{{ end }}
 ```
 
 The `Page` variable is an instance of the object below:
@@ -131,6 +138,12 @@ type Page struct {
 
     // Path to source file for this page, relative to content root
     Filepath      string
+
+    // Parsed front matter values, keyed by TOML key
+    Meta          map[string]any
+
+    // Deprecated: use Meta.
+    Attrs         map[string]any
 }
 ```
 

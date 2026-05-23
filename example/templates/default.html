@@ -9,6 +9,15 @@
         <link rel="sitemap" type="application/xml" href="/sitemap.xml">
     </head>
     <body>
+        <h2>Site config</h2>
+        <ul>{{ range $key, $value := .Meta }}
+            <li>{{ $key }}: {{ $value }}</li>
+        {{ end }}</ul>
+        <h2>Page front matter</h2>
+        <ul>{{ range $key, $value := .Page.Meta }}
+            <li>{{ $key }}: {{ $value }}</li>
+        {{ end }}</ul>
+        <h2>Content</h2>
         {{ .Content }}
     </body>
 </html>
